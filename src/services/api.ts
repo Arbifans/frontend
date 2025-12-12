@@ -16,7 +16,7 @@ interface RegisterCreatorResponse {
 
 interface SubmitAssetPayload {
     creatorId: number;
-    url: string;
+    Url: string;
     price: number;
     description: string;
 }
@@ -24,7 +24,7 @@ interface SubmitAssetPayload {
 export interface Asset {
     id: number;
     creatorId: number;
-    url: string;
+    Url: string;
     price: number;
     description: string;
     unlockableContent?: string; // Assuming based on list display requirements

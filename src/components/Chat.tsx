@@ -76,7 +76,7 @@ export function Chat() {
   const [activeConversation, setActiveConversation] = useState<Conversation>(conversations[0]);
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] border-x border-gray-800">
+    <div className="flex h-[calc(100vh-4rem)] border-x border-gray-200 bg-white">
       <ConversationList
         conversations={conversations}
         activeConversation={activeConversation}

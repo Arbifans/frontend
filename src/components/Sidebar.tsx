@@ -1,4 +1,5 @@
-import { Home, Compass, Bookmark, MessageCircle, DollarSign, BarChart3, Settings } from 'lucide-react';
+import { Home, Compass, Bookmark, MessageCircle, DollarSign, BarChart3, Settings, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
   activePage: string;
@@ -6,6 +7,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activePage, setActivePage }: SidebarProps) {
+  const navigate = useNavigate();
+
   const menuItems = [
     { icon: Home, label: 'Home', page: 'home' },
     { icon: Compass, label: 'Discover', page: 'discover' },
@@ -18,15 +21,15 @@ export function Sidebar({ activePage, setActivePage }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-64 bg-[#0f0f0f] border-r border-gray-800 min-h-screen sticky top-16 px-4 py-6">
-      <nav className="space-y-2">
+    <aside className="w-64 bg-white border-r border-gray-200 min-h-screen sticky top-16 px-4 py-6 flex flex-col">
+      <nav className="space-y-2 flex-1">
         {menuItems.map((item) => (
           <button
             key={item.label}
             onClick={() => setActivePage(item.page)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${activePage === item.page
-              ? 'bg-gradient-to-r from-blue-600 to-pink-600 text-white'
-              : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+              ? 'bg-[#12AAFF] text-white shadow-md'
+              : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
               }`}
           >
             <item.icon className="w-5 h-5" />
@@ -35,15 +38,23 @@ export function Sidebar({ activePage, setActivePage }: SidebarProps) {
         ))}
       </nav>
 
-      <div className="mt-8 p-4 bg-gradient-to-br from-blue-600/20 to-pink-600/20 rounded-lg border border-blue-500/30">
-        <h3 className="mb-2">Become a Creator</h3>
-        <p className="text-sm text-gray-400 mb-3">
+      <div className="mt-8 mb-4 p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+        <h3 className="mb-2 font-semibold text-gray-900">Become a Creator</h3>
+        <p className="text-sm text-gray-500 mb-3">
           Start earning from your content today
         </p>
-        <button className="w-full bg-gradient-to-r from-blue-600 to-pink-600 text-white px-4 py-2 rounded-lg hover:opacity-90 transition">
+        <button className="w-full bg-[#12AAFF] text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition shadow-sm font-medium">
           Get Started
         </button>
       </div>
+
+      <button
+        onClick={() => navigate('/')}
+        className="w-full flex items-center gap-3 px-4 py-3 text-gray-500 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition mt-auto"
+      >
+        <LogOut className="w-5 h-5" />
+        <span>Log Out</span>
+      </button>
     </aside>
   );
 }
