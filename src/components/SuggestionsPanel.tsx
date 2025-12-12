@@ -37,9 +37,9 @@ export function SuggestionsPanel() {
   ];
 
   return (
-    <aside className="w-80 bg-[#0f0f0f] border-l border-gray-800 min-h-screen sticky top-16 px-6 py-6">
+    <aside className="w-80 bg-white border-l border-gray-200 min-h-screen sticky top-16 px-6 py-6 hidden lg:block">
       <div className="mb-6">
-        <h2 className="mb-4 text-gray-400">Suggested Creators</h2>
+        <h2 className="mb-4 text-gray-900 font-semibold">Suggested Creators</h2>
         <div className="space-y-4">
           {suggestions.map((creator) => (
             <div key={creator.id} className="flex items-start justify-between gap-3">
@@ -47,15 +47,15 @@ export function SuggestionsPanel() {
                 <ImageWithFallback
                   src={creator.avatar}
                   alt={creator.name}
-                  className="w-12 h-12 rounded-full object-cover"
+                  className="w-12 h-12 rounded-full object-cover ring-2 ring-gray-100"
                 />
                 <div>
-                  <div>{creator.name}</div>
+                  <div className="font-medium text-gray-900">{creator.name}</div>
                   <div className="text-sm text-gray-500">{creator.username}</div>
-                  <div className="text-xs text-gray-600">{creator.subscribers} subscribers</div>
+                  <div className="text-xs text-gray-500">{creator.subscribers} subscribers</div>
                 </div>
               </div>
-              <button className="text-sm text-blue-500 hover:text-blue-400 transition whitespace-nowrap">
+              <button className="text-sm text-[#12AAFF] hover:text-blue-700 transition whitespace-nowrap font-medium">
                 Subscribe
               </button>
             </div>

@@ -46,39 +46,56 @@ export function AssetDetail({ id, onBack }: AssetDetailProps) {
 
     return (
         <div className="p-4">
-            <button onClick={onBack} className="text-gray-400 hover:text-white mb-4 flex items-center gap-2">
+            <button onClick={onBack} className="text-gray-500 hover:text-gray-900 mb-4 flex items-center gap-2 font-medium transition">
                 <ArrowLeft size={20} /> Back
             </button>
 
-            <div className="bg-[#1a1a1a] rounded-xl border border-gray-800 overflow-hidden">
-                <div className="aspect-video bg-[#0f0f0f] w-full flex items-center justify-center">
-                    {asset.url && (asset.url.match(/\.(jpeg|jpg|gif|png)$/) != null) ? (
-                        <img src={asset.url} alt={asset.description} className="w-full h-full object-contain" />
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+
+                <div className="aspect-video bg-gray-100 w-full flex items-center justify-center border-b border-gray-100 relative">
+                    {asset.Url ? (
+                        <>
+                            <img 
+                                src={asset.Url} 
+                                alt={asset.description} 
+                                className="w-full h-full object-contain" 
+                                onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                            />
+                            <a 
+                                href={asset.Url} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="hidden text-[#12AAFF] hover:underline break-all p-4 text-center font-medium absolute"
+                            >
+                                {asset.Url}
+                            </a>
+                        </>
                     ) : (
-                        <a href={asset.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline break-all p-4 block text-center">
-                            {asset.url}
-                        </a>
+                        <span className="text-gray-500">No content URL</span>
                     )}
                 </div>
 
                 <div className="p-6">
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex justify-between items-start mb-6">
                         <div>
-                            <h1 className="text-xl font-bold text-white mb-2">Asset #{asset.id}</h1>
-                            <p className="text-gray-400 text-sm">Created by Creator #{asset.creatorId}</p>
+                            <h1 className="text-2xl font-bold text-gray-900 mb-2">Asset #{asset.id}</h1>
+                            <p className="text-gray-500 text-sm">Created by Creator #{asset.creatorId}</p>
                         </div>
-                        <div className="bg-gradient-to-r from-blue-600 to-pink-600 px-4 py-2 rounded-lg text-white font-bold">
+                        <div className="bg-[#12AAFF] px-4 py-2 rounded-lg text-white font-bold shadow-md">
                             {asset.price} ETH
                         </div>
                     </div>
 
-                    <div className="prose prose-invert max-w-none">
-                        <h3 className="text-gray-300 font-medium mb-2">Description</h3>
-                        <p className="text-gray-400 whitespace-pre-wrap">{asset.description}</p>
+                    <div className="prose max-w-none">
+                        <h3 className="text-gray-900 font-semibold mb-2">Description</h3>
+                        <p className="text-gray-600 whitespace-pre-wrap leading-relaxed">{asset.description}</p>
                     </div>
 
-                    <div className="mt-8 pt-6 border-t border-gray-800">
-                        <button className="w-full bg-[#2a2a2a] hover:bg-[#333] text-white py-3 rounded-lg font-medium transition">
+                    <div className="mt-8 pt-6 border-t border-gray-100">
+                        <button className="w-full bg-gray-900 hover:bg-black text-white py-3 rounded-lg font-bold transition shadow-md hover:shadow-lg">
                             Purchase to Unlock
                         </button>
                     </div>

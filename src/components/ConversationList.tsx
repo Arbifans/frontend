@@ -10,16 +10,16 @@ interface ConversationListProps {
 
 export function ConversationList({ conversations, activeConversation, setActiveConversation }: ConversationListProps) {
   return (
-    <div className="w-96 border-r border-gray-800 flex flex-col">
+    <div className="w-96 border-r border-gray-200 flex flex-col bg-white">
       {/* Header */}
-      <div className="p-4 border-b border-gray-800">
-        <h2 className="text-xl mb-3">Messages</h2>
+      <div className="p-4 border-b border-gray-200">
+        <h2 className="text-xl mb-3 font-semibold text-gray-900">Messages</h2>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             placeholder="Search messages..."
-            className="w-full bg-[#1a1a1a] border border-gray-800 rounded-full pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-blue-500"
+            className="w-full bg-gray-100 border border-transparent rounded-full pl-10 pr-4 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 placeholder-gray-500 transition-all"
           />
         </div>
       </div>
@@ -30,8 +30,8 @@ export function ConversationList({ conversations, activeConversation, setActiveC
           <button
             key={conversation.id}
             onClick={() => setActiveConversation(conversation)}
-            className={`w-full p-4 flex items-start gap-3 hover:bg-gray-900 transition border-b border-gray-800 ${
-              activeConversation.id === conversation.id ? 'bg-gray-900' : ''
+            className={`w-full p-4 flex items-start gap-3 hover:bg-gray-50 transition border-b border-gray-100 ${
+              activeConversation.id === conversation.id ? 'bg-blue-50' : ''
             }`}
           >
             <div className="relative flex-shrink-0">
