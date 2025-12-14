@@ -21,8 +21,8 @@ export function Sidebar({ activePage, setActivePage }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 min-h-screen sticky top-16 px-4 py-6 flex flex-col">
-      <nav className="space-y-2 flex-1">
+    <aside className="w-64 bg-white border-r border-gray-200 h-[calc(100vh-4rem)] sticky top-16 px-4 py-6 flex flex-col overflow-y-auto">
+      <nav className="space-y-2">
         {menuItems.map((item) => (
           <button
             key={item.label}
@@ -50,7 +50,7 @@ export function Sidebar({ activePage, setActivePage }: SidebarProps) {
 
       <button
         onClick={() => navigate('/')}
-        className="w-full flex items-center gap-3 px-4 py-3 text-gray-500 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition mt-auto"
+        className="w-full flex items-center gap-3 px-4 py-3 text-gray-500 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition"
       >
         <LogOut className="w-5 h-5" />
         <span>Log Out</span>

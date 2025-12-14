@@ -16,9 +16,10 @@ interface RegisterCreatorResponse {
 
 interface SubmitAssetPayload {
     creatorId: number;
-    Url: string;
+    url: string;
     price: number;
     description: string;
+    unlockableContent: boolean;
 }
 
 export interface Asset {
@@ -27,7 +28,7 @@ export interface Asset {
     Url: string;
     price: number;
     description: string;
-    unlockableContent?: string; // Assuming based on list display requirements
+    unlockableContent?: boolean;
 }
 
 const headers = {
