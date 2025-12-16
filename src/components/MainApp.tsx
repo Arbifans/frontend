@@ -101,7 +101,15 @@ export function MainApp() {
                   variants={pageVariants}
                   transition={pageTransition}
                 >
-                  <CreatorRegistration onSuccess={() => setActivePage('submit-asset')} />
+                  {/* If user is logged in, show Create Asset directly */}
+                  {storage.getCreatorId() ? (
+                    <AssetSubmission
+                      onSuccess={() => setActivePage('my-assets')}
+                      onRedirectToRegister={() => setActivePage('register')}
+                    />
+                  ) : (
+                    <CreatorRegistration onSuccess={() => setActivePage('register')} />
+                  )}
                 </motion.div>
               )}
               {activePage === 'submit-asset' && (

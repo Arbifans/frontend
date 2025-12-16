@@ -1,5 +1,6 @@
 import { Home, Compass, Bookmark, MessageCircle, DollarSign, BarChart3, Settings, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { storage } from '../services/storage';
 
 interface SidebarProps {
   activePage: string;
@@ -15,7 +16,6 @@ export function Sidebar({ activePage, setActivePage }: SidebarProps) {
     { icon: MessageCircle, label: 'Messages', page: 'messages' },
     { icon: Bookmark, label: 'Bookmarks', page: 'bookmarks' },
     { icon: DollarSign, label: 'Creator Studio', page: 'register' },
-    { icon: Compass, label: 'Gallery', page: 'assets' },
     { icon: BarChart3, label: 'My Assets', page: 'my-assets' },
     { icon: Settings, label: 'Settings', page: 'settings' },
   ];
@@ -49,7 +49,11 @@ export function Sidebar({ activePage, setActivePage }: SidebarProps) {
       </div>
 
       <button
-        onClick={() => navigate('/')}
+        onClick={() => {
+          storage.clearCreatorId();
+          navigate('/');
+          window.location.reload();
+        }}
         className="w-full flex items-center gap-3 px-4 py-3 text-gray-500 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition"
       >
         <LogOut className="w-5 h-5" />
