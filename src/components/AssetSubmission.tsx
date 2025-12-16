@@ -16,6 +16,9 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
     });
     const [file, setFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [directUrl, setDirectUrl] = useState('');
+    const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file');
+    const [urlWarning, setUrlWarning] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [uploadStatus, setUploadStatus] = useState<string>('');
@@ -59,6 +62,26 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
         }
     };
 
+    const isValidImageUrl = (url: string): boolean => {
+        // Check if URL ends with common image extensions
+        const imageExtensions = /\.(jpg|jpeg|png|gif|bmp|svg|webp)(\?.*)?$/i;
+        return imageExtensions.test(url);
+    };
+
+    const handleUrlChange = (url: string) => {
+        setDirectUrl(url);
+        setUrlWarning(null);
+
+        if (url.trim()) {
+            if (!isValidImageUrl(url)) {
+                setUrlWarning('⚠️ Warning: This URL may not be a direct image link. Please ensure it ends with .jpg, .png, .gif, etc.');
+            }
+            setPreviewUrl(url);
+        } else {
+            setPreviewUrl(null);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -71,27 +94,46 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
             return;
         }
 
-        if (!file) {
-            setError("Please select an image file.");
-            setLoading(false);
-            return;
+        let finalUrl = '';
+
+        if (uploadMode === 'file') {
+            if (!file) {
+                setError("Please select an image file.");
+                setLoading(false);
+                return;
+            }
+
+            try {
+                // 1. Upload to Pinata
+                setUploadStatus('Uploading image to IPFS...');
+                finalUrl = await pinata.uploadFile(file);
+                console.log('Pinata URL:', finalUrl);
+            } catch (err: any) {
+                console.error(err);
+                setError(err.message || 'Failed to upload file');
+                setLoading(false);
+                return;
+            }
+        } else {
+            if (!directUrl.trim()) {
+                setError("Please enter an image URL.");
+                setLoading(false);
+                return;
+            }
+            finalUrl = directUrl.trim();
         }
 
         try {
-            // 1. Upload to Pinata
-            setUploadStatus('Uploading image to IPFS...');
-            const pinataUrl = await pinata.uploadFile(file);
-            console.log('Pinata URL:', pinataUrl);
-            
             // 2. Submit Asset to DB
-            setUploadStatus('Creating asset on-chain...');
+            setUploadStatus('Creating asset...');
             await api.submitAsset({
                 creatorId: Number(creatorId),
-                Url: pinataUrl,
+                url: finalUrl,
                 price: Number(formData.price),
-                description: formData.description
+                description: formData.description,
+                unlockableContent: false // New assets are locked by default
             });
-            
+
             onSuccess();
         } catch (err: any) {
             console.error(err);
@@ -113,54 +155,120 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-                {/* File Upload Area */}
+                {/* Upload Mode Tabs */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
                         Upload Image
                     </label>
-                    
-                    {!file ? (
-                        <div 
-                            onDragOver={(e) => e.preventDefault()}
-                            onDrop={onDrop}
-                            onClick={() => fileInputRef.current?.click()}
-                            className="border-2 border-dashed border-gray-300 rounded-xl p-8 hover:bg-gray-50 transition cursor-pointer flex flex-col items-center justify-center text-center group"
+
+                    {/* Tabs */}
+                    <div className="flex gap-2 mb-3">
+                        <button
+                            type="button"
+                            onClick={() => setUploadMode('file')}
+                            className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition ${uploadMode === 'file'
+                                ? 'bg-[#12AAFF] text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
                         >
-                            <div className="w-12 h-12 bg-blue-50 text-[#12AAFF] rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition">
-                                <Upload size={24} />
-                            </div>
-                            <p className="text-gray-900 font-medium">Click to upload or drag and drop</p>
-                            <p className="text-gray-500 text-xs mt-1">SVG, PNG, JPG or GIF (max. 10MB)</p>
-                            <input 
-                                type="file" 
-                                ref={fileInputRef}
-                                className="hidden" 
-                                accept="image/*"
-                                onChange={(e) => e.target.files && handleFileChange(e.target.files[0])}
-                            />
-                        </div>
-                    ) : (
-                        <div className="relative rounded-xl overflow-hidden border border-gray-200 group">
-                            <div className="aspect-video bg-gray-100 flex items-center justify-center">
-                                {previewUrl ? (
-                                    <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
-                                ) : (
-                                    <ImageIcon className="text-gray-300" size={48} />
-                                )}
-                            </div>
-                            <div className="absolute top-2 right-2">
-                                <button 
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); handleRemoveFile(); }}
-                                    className="p-1.5 bg-white/80 hover:bg-white text-gray-700 rounded-full shadow-sm backdrop-blur-sm transition"
+                            📤 Upload File
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setUploadMode('url')}
+                            className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition ${uploadMode === 'url'
+                                ? 'bg-[#12AAFF] text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                        >
+                            🔗 Paste URL
+                        </button>
+                    </div>
+
+                    {/* File Upload Mode */}
+                    {uploadMode === 'file' && (
+                        <>
+                            {!file ? (
+                                <div
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={onDrop}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="border-2 border-dashed border-gray-300 rounded-xl p-8 hover:bg-gray-50 transition cursor-pointer flex flex-col items-center justify-center text-center group"
                                 >
-                                    <X size={16} />
-                                </button>
-                            </div>
-                            <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center gap-2">
-                                <ImageIcon size={16} className="text-[#12AAFF]" />
-                                <span className="text-sm text-gray-700 truncate">{file.name}</span>
-                            </div>
+                                    <div className="w-12 h-12 bg-blue-50 text-[#12AAFF] rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition">
+                                        <Upload size={24} />
+                                    </div>
+                                    <p className="text-gray-900 font-medium">Click to upload or drag and drop</p>
+                                    <p className="text-gray-500 text-xs mt-1">SVG, PNG, JPG or GIF (max. 10MB)</p>
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        className="hidden"
+                                        accept="image/*"
+                                        onChange={(e) => e.target.files && handleFileChange(e.target.files[0])}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="relative rounded-xl overflow-hidden border border-gray-200 group">
+                                    <div className="aspect-video bg-gray-100 flex items-center justify-center">
+                                        {previewUrl ? (
+                                            <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
+                                        ) : (
+                                            <ImageIcon className="text-gray-300" size={48} />
+                                        )}
+                                    </div>
+                                    <div className="absolute top-2 right-2">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); handleRemoveFile(); }}
+                                            className="p-1.5 bg-white/80 hover:bg-white text-gray-700 rounded-full shadow-sm backdrop-blur-sm transition"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                    <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center gap-2">
+                                        <ImageIcon size={16} className="text-[#12AAFF]" />
+                                        <span className="text-sm text-gray-700 truncate">{file.name}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* URL Input Mode */}
+                    {uploadMode === 'url' && (
+                        <div className="space-y-3">
+                            <input
+                                type="url"
+                                value={directUrl}
+                                onChange={(e) => handleUrlChange(e.target.value)}
+                                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 transition-all"
+                                placeholder="https://example.com/image.jpg"
+                            />
+
+                            {urlWarning && (
+                                <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 p-3 rounded-lg text-xs">
+                                    {urlWarning}
+                                </div>
+                            )}
+
+                            {/* Preview */}
+                            {previewUrl && (
+                                <div className="relative rounded-xl overflow-hidden border border-gray-200">
+                                    <div className="aspect-video bg-gray-100 flex items-center justify-center">
+                                        <img
+                                            src={previewUrl}
+                                            alt="Preview"
+                                            className="w-full h-full object-contain"
+                                            onError={(e) => {
+                                                e.currentTarget.src = '';
+                                                e.currentTarget.alt = 'Failed to load image';
+                                                e.currentTarget.className = 'hidden';
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

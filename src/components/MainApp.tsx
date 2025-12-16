@@ -101,15 +101,15 @@ export function MainApp() {
                   variants={pageVariants}
                   transition={pageTransition}
                 >
-                  {/* This is a wrapper to handle the sub-navigation between register and submit */}
-                  <div className="space-y-4">
-                    <CreatorRegistration onSuccess={() => setActivePage('submit-asset')} />
-                    <div className="flex justify-center">
-                      <button onClick={() => setActivePage('submit-asset')} className="text-sm text-gray-400 hover:text-white">
-                        Already registered? Submit an asset
-                      </button>
-                    </div>
-                  </div>
+                  {/* If user is logged in, show Create Asset directly */}
+                  {storage.getCreatorId() ? (
+                    <AssetSubmission
+                      onSuccess={() => setActivePage('my-assets')}
+                      onRedirectToRegister={() => setActivePage('register')}
+                    />
+                  ) : (
+                    <CreatorRegistration onSuccess={() => setActivePage('register')} />
+                  )}
                 </motion.div>
               )}
               {activePage === 'submit-asset' && (

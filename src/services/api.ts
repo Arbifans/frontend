@@ -16,9 +16,10 @@ interface RegisterCreatorResponse {
 
 interface SubmitAssetPayload {
     creatorId: number;
-    Url: string;
+    url: string;
     price: number;
     description: string;
+    unlockableContent: boolean;
 }
 
 export interface Asset {
@@ -27,7 +28,13 @@ export interface Asset {
     Url: string;
     price: number;
     description: string;
-    unlockableContent?: string; // Assuming based on list display requirements
+    unlockableContent?: boolean;
+}
+
+export interface CreatorProfile {
+    id: number;
+    name: string;
+    walletAddress: string;
 }
 
 const headers = {
@@ -75,5 +82,31 @@ export const api = {
             headers,
         });
         return handleResponse<Asset>(response);
+    },
+
+    async loginCreator(username: string, walletAddress: string): Promise<{ creatorId: number }> {
+        const response = await fetch(`${API_BASE_URL}/api/creator/login`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ username, walletAddress }),
+        });
+        return handleResponse<{ creatorId: number }>(response);
+    },
+
+    async getCreatorProfile(id: number | string): Promise<CreatorProfile> {
+        const response = await fetch(`${API_BASE_URL}/api/creator/register/${id}`, {
+            method: 'GET',
+            headers,
+        });
+        return handleResponse<CreatorProfile>(response);
+    },
+
+    async updateCreatorProfile(id: number | string, name: string): Promise<CreatorProfile> {
+        const response = await fetch(`${API_BASE_URL}/api/creator/register/${id}`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ name }),
+        });
+        return handleResponse<CreatorProfile>(response);
     },
 };

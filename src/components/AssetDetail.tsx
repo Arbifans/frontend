@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api, Asset } from '../services/api';
+import { storage } from '../services/storage';
 import { ArrowLeft } from 'lucide-react';
 
 interface AssetDetailProps {
@@ -11,9 +12,12 @@ export function AssetDetail({ id, onBack }: AssetDetailProps) {
     const [asset, setAsset] = useState<Asset | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [currentCreatorId, setCurrentCreatorId] = useState<number | null>(null);
 
     useEffect(() => {
         loadAsset();
+        const storedId = storage.getCreatorId();
+        setCurrentCreatorId(storedId ? Number(storedId) : null);
     }, [id]);
 
     const loadAsset = async () => {
@@ -44,6 +48,13 @@ export function AssetDetail({ id, onBack }: AssetDetailProps) {
         </div>
     );
 
+    const isOwner = currentCreatorId === asset.creatorId;
+    const isUnlocked = asset.unlockableContent === true;
+    const shouldBlur = !isOwner && !isUnlocked;
+
+    // Debug logging
+    console.log('Detail View - Asset ID:', asset.id, 'Creator:', asset.creatorId, 'Current User:', currentCreatorId, 'isOwner:', isOwner, 'shouldBlur:', shouldBlur);
+
     return (
         <div className="p-4">
             <button onClick={onBack} className="text-gray-500 hover:text-gray-900 mb-4 flex items-center gap-2 font-medium transition">
@@ -55,19 +66,19 @@ export function AssetDetail({ id, onBack }: AssetDetailProps) {
                 <div className="aspect-video bg-gray-100 w-full flex items-center justify-center border-b border-gray-100 relative">
                     {asset.Url ? (
                         <>
-                            <img 
-                                src={asset.Url} 
-                                alt={asset.description} 
-                                className="w-full h-full object-contain" 
+                            <img
+                                src={asset.Url}
+                                alt={asset.description}
+                                className={`w-full h-full object-contain ${shouldBlur ? 'blur-xl scale-110' : ''}`}
                                 onError={(e) => {
                                     e.currentTarget.style.display = 'none';
                                     e.currentTarget.nextElementSibling?.classList.remove('hidden');
                                 }}
                             />
-                            <a 
-                                href={asset.Url} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
+                            <a
+                                href={asset.Url}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="hidden text-[#12AAFF] hover:underline break-all p-4 text-center font-medium absolute"
                             >
                                 {asset.Url}
@@ -94,11 +105,22 @@ export function AssetDetail({ id, onBack }: AssetDetailProps) {
                         <p className="text-gray-600 whitespace-pre-wrap leading-relaxed">{asset.description}</p>
                     </div>
 
-                    <div className="mt-8 pt-6 border-t border-gray-100">
-                        <button className="w-full bg-gray-900 hover:bg-black text-white py-3 rounded-lg font-bold transition shadow-md hover:shadow-lg">
-                            Purchase to Unlock
-                        </button>
-                    </div>
+                    {!isOwner && (
+                        <div className="mt-8 pt-6 border-t border-gray-100">
+                            <button className="w-full bg-gray-900 hover:bg-black text-white py-3 rounded-lg font-bold transition shadow-md hover:shadow-lg">
+                                Purchase to Unlock
+                            </button>
+                        </div>
+                    )}
+
+                    {isOwner && (
+                        <div className="mt-8 pt-6 border-t border-gray-100">
+                            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-center">
+                                <p className="font-medium">✨ This is your asset</p>
+                                <p className="text-sm mt-1 text-blue-600">You have full access to this content</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
