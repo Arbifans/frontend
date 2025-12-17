@@ -14,10 +14,219 @@ import { storage } from '../services/storage';
 import { useEffect, useState } from 'react';
 import { Earnings } from './Earnings';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { useSendTransaction, usePrivy, useWallets, getEmbeddedConnectedWallet } from '@privy-io/react-auth'
+import { useBalance } from 'wagmi'
+import { megaethTestnet, riseTestnet, arbitrumSepolia } from 'viem/chains'
+import { Check, Copy } from 'lucide-react'
+import { createWalletClient, createPublicClient, http, custom, type Hex, type WalletClient, formatEther, formatUnits, erc20Abi, parseUnits } from 'viem'
+import { useReadContract, useWaitForTransactionReceipt } from 'wagmi'
 
 export function MainApp() {
   const [activePage, setActivePage] = useState('home');
+  const navigate = useNavigate();
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
+  const { wallets } = useWallets();
+  const embeddedWallet = getEmbeddedConnectedWallet(wallets)
+  const { login, logout, authenticated } = usePrivy()
+  const { sendTransaction } = useSendTransaction()
+
+  const [lastTxHash, setLastTxHash] = useState<string | null>(null)
+  const [lastContractHash, setLastContractHash] = useState<string | null>(null)
+  const [isSendingTx, setIsSendingTx] = useState(false)
+  const [isClaiming, setIsClaiming] = useState(false)
+  const [isTransferring, setIsTransferring] = useState(false)
+  const [recipient, setRecipient] = useState('')
+  const [amount, setAmount] = useState('')
+  const [copied, setCopied] = useState(false)
+  const [walletClient, setWalletClient] = useState<WalletClient | null>(null)
+
+  // X402 State
+  const [x402Status, setX402Status] = useState<'idle' | 'fetching_payment_info' | 'sending_payment' | 'verifying' | 'success' | 'error'>('idle');
+  const [x402Message, setX402Message] = useState<string>('');
+  const [protectedData, setProtectedData] = useState<any>(null);
+
+  const chainId = embeddedWallet?.chainId ? parseInt(embeddedWallet.chainId.split(':')[1]) : null
+
+  const { data: balance, refetch: refetchBalance } = useBalance({
+    address: embeddedWallet?.address as `0x${string}`,
+    chainId: chainId!
+  })
+
+  // Fetch token balance explicitly using useReadContract to avoid useBalance token parameter issues
+  const { data: tokenBalanceRaw, refetch: refetchTokenBalance } = useReadContract({
+    address: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a',
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [embeddedWallet?.address as `0x${string}`],
+    chainId: chainId!,
+    query: {
+      enabled: !!embeddedWallet?.address && !!chainId
+    }
+  })
+
+  const tokenBalanceFormatted = tokenBalanceRaw ? formatUnits(tokenBalanceRaw as bigint, 6) : '0'
+  const sepoliaBalance = balance ? formatEther(balance.value) : '0'
+
+  const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash: lastTxHash as `0x${string}`,
+  })
+
+  useEffect(() => {
+    if (isConfirmed) {
+      refetchBalance()
+      refetchTokenBalance()
+    }
+  }, [isConfirmed, refetchBalance, refetchTokenBalance])
+
+  useEffect(() => {
+    const createClient = async () => {
+      if (embeddedWallet && chainId) {
+        try {
+          const provider = await embeddedWallet.getEthereumProvider()
+          const client = createWalletClient({
+            account: embeddedWallet.address as Hex,
+            chain: arbitrumSepolia,
+            transport: custom(provider!),
+          })
+          setWalletClient(client)
+        } catch (error) {
+          console.error('Failed to create wallet client:', error)
+          setWalletClient(null)
+        }
+      } else {
+        setWalletClient(null)
+      }
+    }
+
+    createClient()
+  }, [embeddedWallet?.address, chainId])
+
+  const handleX402Flow = async () => {
+    if (!walletClient || !embeddedWallet) {
+      setX402Message("Wallet not connected.");
+      return;
+    }
+
+    setX402Status('fetching_payment_info');
+    setX402Message("Requesting protected resource...");
+    setProtectedData(null);
+
+    try {
+      // Step 1: Request Resource
+      const response = await fetch('http://localhost:8000/x402', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.status === 402) {
+        const errorData = await response.json();
+        setX402Message(`Resource protected. Payment Required.\nDetails: ${JSON.stringify(errorData.paymentDetails, null, 2)}`);
+        
+        const { receiver, amount, tokenAddress, decimals } = errorData.paymentDetails;
+        
+        if (!receiver || !amount || !tokenAddress) {
+           throw new Error("Invalid payment details received.");
+        }
+
+        // Step 2: Send Payment
+        setX402Status('sending_payment');
+        setX402Message((prev) => prev + `\n\nInitiating payment of ${amount} mUSDT to ${receiver}...`);
+
+        const hash = await walletClient.writeContract({
+            account: embeddedWallet.address as Hex,
+            address: tokenAddress as `0x${string}`,
+            abi: erc20Abi,
+            functionName: 'transfer',
+            args: [receiver as `0x${string}`, parseUnits(amount, decimals)],
+            chain: arbitrumSepolia 
+        });
+
+        setX402Message((prev) => prev + `\nTransaction sent! Hash: ${hash}\nWaiting for confirmation...`);
+
+        // Wait for confirmation
+        const publicClient = createPublicClient({
+            chain: arbitrumSepolia,
+            transport: http() 
+        });
+
+        await publicClient.waitForTransactionReceipt({ hash });
+        
+        setX402Message((prev) => prev + `\nTransaction confirmed! Verifying with server...`);
+
+        // Step 3: Verify Payment
+        setX402Status('verifying');
+        
+        const verifyResponse = await fetch('http://localhost:8000/x402/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ txHash: hash })
+        });
+
+        const verifyData = await verifyResponse.json();
+
+        if (verifyResponse.ok) {
+            setX402Status('success');
+            setProtectedData(verifyData);
+            setX402Message((prev) => prev + `\n\nAccess Granted!`);
+        } else {
+             throw new Error(verifyData.error || "Verification failed");
+        }
+
+      } else if (response.ok) {
+        // Already paid or free?
+        const data = await response.json();
+        setX402Status('success');
+        setProtectedData(data);
+        setX402Message("Resource accessed successfully (no payment required).");
+      } else {
+        throw new Error(`Unexpected status: ${response.status}`);
+      }
+
+    } catch (error: any) {
+      console.error("X402 Flow Error:", error);
+      setX402Status('error');
+      setX402Message((prev) => prev + `\n\nError: ${error.message}`);
+    }
+  };
+
+  const handleFaucet = async () => {
+    if (!walletClient) return;
+    try {
+      setIsClaiming(true);
+      const hash = await walletClient.writeContract({
+        account: embeddedWallet?.address as Hex,
+        address: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a',
+        abi: [{
+          name: 'faucet',
+          type: 'function',
+          stateMutability: 'nonpayable',
+          inputs: [],
+          outputs: []
+        }],
+        functionName: 'faucet',
+        args: [],
+        chain: arbitrumSepolia
+      });
+      setLastTxHash(hash);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsClaiming(false);
+    }
+  }
+
+  const copyAddress = async () => {
+    if (embeddedWallet?.address) {
+      await navigator.clipboard.writeText(embeddedWallet.address)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  const hasBalance = balance && balance.value > 0
 
   useEffect(() => {
     const handler = (e: any) => setSelectedAssetId(e.detail);
@@ -35,9 +244,15 @@ export function MainApp() {
     duration: 0.4
   };
 
+  useEffect(() => {
+    if (!authenticated) {
+      navigate('/');
+    }
+  }, [authenticated]);
+
   return (
     <div className="min-h-screen bg-[#F3F4F6] text-gray-900">
-      <TopBar />
+      <TopBar embeddedWalletAddress={embeddedWallet?.address} />
       <div className="flex">
         <Sidebar activePage={activePage} setActivePage={setActivePage} />
         <main className="flex-1 flex">

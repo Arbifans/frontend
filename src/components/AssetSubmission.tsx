@@ -2,7 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { storage } from '../services/storage';
 import { pinata } from '../services/pinata';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { useWallets, getEmbeddedConnectedWallet } from '@privy-io/react-auth';
+import { createWalletClient, custom, parseUnits, erc20Abi } from 'viem';
+import { arbitrumSepolia } from 'viem/chains';
 
 interface AssetSubmissionProps {
     onSuccess: () => void;
@@ -10,6 +13,9 @@ interface AssetSubmissionProps {
 }
 
 export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmissionProps) {
+    const { wallets } = useWallets();
+    const embeddedWallet = getEmbeddedConnectedWallet(wallets);
+
     const [formData, setFormData] = useState({
         price: '',
         description: ''
@@ -104,13 +110,39 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
             }
 
             try {
-                // 1. Upload to Pinata
+                // 1. Process Payment (1% Fee)
+                setUploadStatus('Processing protocol fee...');
+                const price = Number(formData.price);
+                const fee = price * 0.01;
+                
+                if (fee > 0) {
+                     if (!embeddedWallet) {
+                        throw new Error('Wallet not connected');
+                    }
+                    const provider = await embeddedWallet.getEthereumProvider();
+                    const walletClient = createWalletClient({
+                        account: embeddedWallet.address as `0x${string}`,
+                        chain: arbitrumSepolia,
+                        transport: custom(provider!)
+                    });
+
+                    const hash = await walletClient.writeContract({
+                        address: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a', // mUSDT Address
+                        abi: erc20Abi,
+                        functionName: 'transfer',
+                        args: ['0x3141011f001FB5f1CdE0183ACDdD9434Fa473F70', parseUnits(fee.toFixed(6), 6)], 
+                        chain: arbitrumSepolia
+                    });
+                    console.log('Fee paid:', hash);
+                }
+
+                // 2. Upload to Pinata
                 setUploadStatus('Uploading image to IPFS...');
                 finalUrl = await pinata.uploadFile(file);
                 console.log('Pinata URL:', finalUrl);
             } catch (err: any) {
                 console.error(err);
-                setError(err.message || 'Failed to upload file');
+                setError(err.message || 'Failed to process request');
                 setLoading(false);
                 return;
             }
@@ -120,11 +152,45 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
                 setLoading(false);
                 return;
             }
+            
+            // Handle Payment for URL mode too
+             try {
+                setUploadStatus('Processing protocol fee...');
+                const price = Number(formData.price);
+                const fee = price * 0.01;
+                
+                 if (fee > 0) {
+                    if (!embeddedWallet) {
+                        throw new Error('Wallet not connected');
+                    }
+                    const provider = await embeddedWallet.getEthereumProvider();
+                    const walletClient = createWalletClient({
+                        account: embeddedWallet.address as `0x${string}`,
+                        chain: arbitrumSepolia,
+                        transport: custom(provider!)
+                    });
+
+                    const hash = await walletClient.writeContract({
+                         address: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a', // mUSDT Address
+                        abi: erc20Abi,
+                        functionName: 'transfer',
+                        args: ['0x3141011f001FB5f1CdE0183ACDdD9434Fa473F70', parseUnits(fee.toFixed(6), 6)],
+                        chain: arbitrumSepolia
+                    });
+                    console.log('Fee paid:', hash);
+                }
+            } catch (err: any) {
+                console.error(err);
+                setError(err.message || 'Payment failed');
+                setLoading(false);
+                return;
+            }
+
             finalUrl = directUrl.trim();
         }
 
         try {
-            // 2. Submit Asset to DB
+            // 3. Submit Asset to DB
             setUploadStatus('Creating asset...');
             await api.submitAsset({
                 creatorId: Number(creatorId),
@@ -275,7 +341,7 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Price (ETH)
+                        Price (mUSDT)
                     </label>
                     <input
                         type="number"
@@ -284,8 +350,21 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
                         value={formData.price}
                         onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                         className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 transition-all"
-                        placeholder="0.1"
+                        placeholder="1.0"
                     />
+                    {formData.price && !isNaN(Number(formData.price)) && (
+                        <div className="mt-2 flex items-start gap-2 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                            <AlertCircle className="w-4 h-4 text-[#12AAFF] flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="font-medium text-[#12AAFF]">Protocol Fee Required</p>
+                                <p>
+                                    To create this asset, a 1% protocol fee of 
+                                    <strong className="mx-1 text-gray-900">{(Number(formData.price) * 0.01)} mUSDT</strong>
+                                    will be deducted from your wallet.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div>
