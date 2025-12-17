@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import { storage } from '../services/storage';
 import { api, CreatorProfile } from '../services/api';
 import { arbitrumSepolia } from 'viem/chains'
-import { type WalletClient, type Hex, createWalletClient, custom } from 'viem';
+import { type WalletClient, type Hex, createWalletClient, custom, encodeFunctionData } from 'viem';
 import { useSendTransaction, usePrivy, useWallets, getEmbeddedConnectedWallet } from '@privy-io/react-auth'
 
 
@@ -118,13 +118,23 @@ export function TopBar({ embeddedWalletAddress }: TopBarProps) {
   // Ideally, if we have embedded wallet, we might consider them 'logged in' or at least 'connected'.
   // But logic relies on creatorId. 
 
+  const { sendTransaction } = useSendTransaction({
+    onSuccess: (receipt) => {
+      console.log('Faucet claim submitted:', receipt.hash);
+      setLastTxHash(receipt.hash);
+      setIsClaiming(false);
+    },
+    onError: (error) => {
+      console.error('Faucet claim failed:', error);
+      setIsClaiming(false);
+    }
+  });
+
   const handleFaucet = async () => {
-    if (!walletClient) return;
+    if (!embeddedWallet) return;
     try {
       setIsClaiming(true);
-      const hash = await walletClient.writeContract({
-        account: embeddedWallet?.address as Hex,
-        address: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a',
+      const data = encodeFunctionData({
         abi: [{
           name: 'faucet',
           type: 'function',
@@ -133,15 +143,22 @@ export function TopBar({ embeddedWalletAddress }: TopBarProps) {
           outputs: []
         }],
         functionName: 'faucet',
-        args: [],
-        chain: arbitrumSepolia
+        args: []
       });
 
-      console.log('Faucet claim submitted:', hash);
-      setLastTxHash(hash);
+      // Pass empty UI options or valid ones. Sponsor seems to be config based on chain.
+      // But if we need to force it, we might check docs. For now, assuming standard flow.
+      await sendTransaction({
+        to: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a',
+        data: data,
+        chainId: 421614, 
+      },
+    {
+      sponsor: true,
+    }); 
+      
     } catch (e) {
       console.error(e);
-    } finally {
       setIsClaiming(false);
     }
   }
