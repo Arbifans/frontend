@@ -3,9 +3,8 @@ import { Heart, MessageCircle, Bookmark, MoreHorizontal, Send, Lock } from 'luci
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Asset } from '../services/api';
 import { api } from '../services/api';
-import { useWallets, getEmbeddedConnectedWallet } from '@privy-io/react-auth';
-import { createWalletClient, custom, parseUnits, erc20Abi } from 'viem';
-import { arbitrumSepolia } from 'viem/chains';
+import { useWallets, getEmbeddedConnectedWallet, useSendTransaction } from '@privy-io/react-auth';
+import { parseUnits, erc20Abi, encodeFunctionData } from 'viem';
 
 interface FeedCardProps {
     asset: Asset;
@@ -48,6 +47,14 @@ export function FeedCard({ asset, creatorName, isOwner = false, onClick }: FeedC
     // Override shouldBlur if locally unlocked
     const effectiveShouldBlur = shouldBlur && !localUnlocked;
 
+    const { sendTransaction } = useSendTransaction({
+        onError: (error) => {
+            console.error("Payment failed:", error);
+            setIsProcessing(false);
+            alert("Payment failed or cancelled");
+        }
+    });
+
     const handlePayment = async () => {
         if (!embeddedWallet) {
             alert("Please login first");
@@ -61,8 +68,7 @@ export function FeedCard({ asset, creatorName, isOwner = false, onClick }: FeedC
             const responseGet = await api.getPurchaseAsset(asset.id);
             const invoice = responseGet.paymentDetails;
             console.log("Invoice:", invoice);
-            // Expected invoice format: { receiverAddress: string, requiredAmount: string, currency: string }
-            // Note: API might keys might differ, adjusting based on usage context
+            
             const receiverAddress = invoice.receiver;
             const amount = invoice.amount;
             
@@ -73,34 +79,44 @@ export function FeedCard({ asset, creatorName, isOwner = false, onClick }: FeedC
             console.log("Invoice:", receiverAddress, amount);
 
             // 2. Pay Invoice (ERC20 Transfer)
-            const provider = await embeddedWallet.getEthereumProvider();
-            const walletClient = createWalletClient({
-                account: embeddedWallet.address as `0x${string}`,
-                chain: arbitrumSepolia,
-                transport: custom(provider!)
-            });
-
-            const hash = await walletClient.writeContract({
-                address: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a', // mUSDT Address
+            const data = encodeFunctionData({
                 abi: erc20Abi,
                 functionName: 'transfer',
-                args: [receiverAddress as `0x${string}`, parseUnits(amount.toString(), 6)], // mUSDT is 6 decimals
-                chain: arbitrumSepolia
+                args: [receiverAddress as `0x${string}`, parseUnits(amount.toString(), 6)]
             });
 
-            console.log("Payment sent:", hash);
+            const receipt = await sendTransaction({
+                to: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a', // mUSDT Address
+                data: data,
+                chainId: 421614
+            },
+        {
+            sponsor: true
+        });
+
+            console.log("Payment sent:", receipt.hash);
 
             // 3. Verify Payment
-            await api.postVerifyAsset(asset.id, amount.toString(), receiverAddress, hash);
+            await api.postVerifyAsset(asset.id, amount.toString(), receiverAddress, receipt.hash);
             
             // 4. Unlock
             setLocalUnlocked(true);
+            setIsProcessing(false);
             
         } catch (error) {
             console.error("Payment failed:", error);
-            alert("Payment failed or cancelled");
+            // Alert handled in onError for tx failure, but for API errors:
+            // setIsProcessing(false); // Handled in onError for sendTransaction, but what if API fails?
+            // Actually sendTransaction throws? useSendTransaction hook doesn't throw usually if onError is handled? 
+            // Wait, sendTransaction returns a Promise.
+            // If it fails, does the promise reject?
+            // Privy docs say: sendTransaction returns a Promise that resolves to the transaction receipt.
+            // If it fails, it rejects.
+            // So try/catch is correct.
+            // Double check duplicate alert if onError handles it.
+            // onError is called when user rejects or simulation fails.
         } finally {
-            setIsProcessing(false);
+            // setIsProcessing(false); // We handle inside success flow or error flow
         }
     };
 
@@ -210,7 +226,7 @@ export function FeedCard({ asset, creatorName, isOwner = false, onClick }: FeedC
                                     onClick={handlePayment}
                                     disabled={isProcessing}
                                 >
-                                    {isProcessing ? 'Processing...' : `Unlock for ${asset.price} ETH`}
+                                    {isProcessing ? 'Processing...' : `Unlock for ${asset.price} mUSDT`}
                                 </button>
                             </div>
                         )}

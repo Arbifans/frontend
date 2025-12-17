@@ -3,9 +3,8 @@ import { api } from '../services/api';
 import { storage } from '../services/storage';
 import { pinata } from '../services/pinata';
 import { Upload, X, Image as ImageIcon, AlertCircle } from 'lucide-react';
-import { useWallets, getEmbeddedConnectedWallet } from '@privy-io/react-auth';
-import { createWalletClient, custom, parseUnits, erc20Abi } from 'viem';
-import { arbitrumSepolia } from 'viem/chains';
+import { useWallets, getEmbeddedConnectedWallet, useSendTransaction } from '@privy-io/react-auth';
+import { parseUnits, erc20Abi, encodeFunctionData } from 'viem';
 
 interface AssetSubmissionProps {
     onSuccess: () => void;
@@ -88,6 +87,14 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
         }
     };
 
+    const { sendTransaction } = useSendTransaction({
+        onError: (error) => {
+            console.error('Fee payment failed', error);
+            setUploadStatus('');
+            setLoading(false);
+        }
+    });
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -102,6 +109,35 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
 
         let finalUrl = '';
 
+        // Helper to process fee
+        const processFee = async () => {
+             setUploadStatus('Processing protocol fee...');
+             const price = Number(formData.price);
+             const fee = price * 0.01;
+             
+             if (fee > 0) {
+                 if (!embeddedWallet) {
+                     throw new Error('Wallet not connected');
+                 }
+                 
+                 const data = encodeFunctionData({
+                     abi: erc20Abi,
+                     functionName: 'transfer',
+                     args: ['0x3141011f001FB5f1CdE0183ACDdD9434Fa473F70', parseUnits(fee.toFixed(6), 6)]
+                 });
+
+                 const receipt = await sendTransaction({
+                     to: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a', // mUSDT
+                     data: data,
+                     chainId: 421614
+                 },
+                {
+                    sponsor: true
+                });
+                 console.log('Fee paid:', receipt.hash);
+             }
+        };
+
         if (uploadMode === 'file') {
             if (!file) {
                 setError("Please select an image file.");
@@ -111,30 +147,7 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
 
             try {
                 // 1. Process Payment (1% Fee)
-                setUploadStatus('Processing protocol fee...');
-                const price = Number(formData.price);
-                const fee = price * 0.01;
-                
-                if (fee > 0) {
-                     if (!embeddedWallet) {
-                        throw new Error('Wallet not connected');
-                    }
-                    const provider = await embeddedWallet.getEthereumProvider();
-                    const walletClient = createWalletClient({
-                        account: embeddedWallet.address as `0x${string}`,
-                        chain: arbitrumSepolia,
-                        transport: custom(provider!)
-                    });
-
-                    const hash = await walletClient.writeContract({
-                        address: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a', // mUSDT Address
-                        abi: erc20Abi,
-                        functionName: 'transfer',
-                        args: ['0x3141011f001FB5f1CdE0183ACDdD9434Fa473F70', parseUnits(fee.toFixed(6), 6)], 
-                        chain: arbitrumSepolia
-                    });
-                    console.log('Fee paid:', hash);
-                }
+                await processFee();
 
                 // 2. Upload to Pinata
                 setUploadStatus('Uploading image to IPFS...');
@@ -155,30 +168,7 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
             
             // Handle Payment for URL mode too
              try {
-                setUploadStatus('Processing protocol fee...');
-                const price = Number(formData.price);
-                const fee = price * 0.01;
-                
-                 if (fee > 0) {
-                    if (!embeddedWallet) {
-                        throw new Error('Wallet not connected');
-                    }
-                    const provider = await embeddedWallet.getEthereumProvider();
-                    const walletClient = createWalletClient({
-                        account: embeddedWallet.address as `0x${string}`,
-                        chain: arbitrumSepolia,
-                        transport: custom(provider!)
-                    });
-
-                    const hash = await walletClient.writeContract({
-                         address: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a', // mUSDT Address
-                        abi: erc20Abi,
-                        functionName: 'transfer',
-                        args: ['0x3141011f001FB5f1CdE0183ACDdD9434Fa473F70', parseUnits(fee.toFixed(6), 6)],
-                        chain: arbitrumSepolia
-                    });
-                    console.log('Fee paid:', hash);
-                }
+                await processFee();
             } catch (err: any) {
                 console.error(err);
                 setError(err.message || 'Payment failed');
