@@ -6,7 +6,6 @@ import { SuggestionsPanel } from './SuggestionsPanel';
 import { Discover } from './Discover';
 import { Chat } from './Chat';
 import { Bookmarks } from './Bookmarks';
-import { CreatorRegistration } from './CreatorRegistration';
 import { AssetSubmission } from './AssetSubmission';
 import { AssetList } from './AssetList';
 import { AssetDetail } from './AssetDetail';
@@ -21,6 +20,8 @@ import { megaethTestnet, riseTestnet, arbitrumSepolia } from 'viem/chains'
 import { Check, Copy } from 'lucide-react'
 import { createWalletClient, createPublicClient, http, custom, type Hex, type WalletClient, formatEther, formatUnits, erc20Abi, parseUnits } from 'viem'
 import { useReadContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useAutoRegisterCreator } from '../hooks/useAutoRegisterCreator'
+
 
 export function MainApp() {
   const [activePage, setActivePage] = useState('home');
@@ -30,6 +31,9 @@ export function MainApp() {
   const embeddedWallet = getEmbeddedConnectedWallet(wallets)
   const { login, logout, authenticated } = usePrivy()
   const { sendTransaction } = useSendTransaction()
+
+  // Auto-register creator when user authenticates via Privy
+  const { isRegistering, isRegistered, error: registrationError, creatorId } = useAutoRegisterCreator();
 
   const [lastTxHash, setLastTxHash] = useState<string | null>(null)
   const [lastContractHash, setLastContractHash] = useState<string | null>(null)
@@ -124,11 +128,11 @@ export function MainApp() {
       if (response.status === 402) {
         const errorData = await response.json();
         setX402Message(`Resource protected. Payment Required.\nDetails: ${JSON.stringify(errorData.paymentDetails, null, 2)}`);
-        
+
         const { receiver, amount, tokenAddress, decimals } = errorData.paymentDetails;
-        
+
         if (!receiver || !amount || !tokenAddress) {
-           throw new Error("Invalid payment details received.");
+          throw new Error("Invalid payment details received.");
         }
 
         // Step 2: Send Payment
@@ -136,43 +140,43 @@ export function MainApp() {
         setX402Message((prev) => prev + `\n\nInitiating payment of ${amount} mUSDT to ${receiver}...`);
 
         const hash = await walletClient.writeContract({
-            account: embeddedWallet.address as Hex,
-            address: tokenAddress as `0x${string}`,
-            abi: erc20Abi,
-            functionName: 'transfer',
-            args: [receiver as `0x${string}`, parseUnits(amount, decimals)],
-            chain: arbitrumSepolia 
+          account: embeddedWallet.address as Hex,
+          address: tokenAddress as `0x${string}`,
+          abi: erc20Abi,
+          functionName: 'transfer',
+          args: [receiver as `0x${string}`, parseUnits(amount, decimals)],
+          chain: arbitrumSepolia
         });
 
         setX402Message((prev) => prev + `\nTransaction sent! Hash: ${hash}\nWaiting for confirmation...`);
 
         // Wait for confirmation
         const publicClient = createPublicClient({
-            chain: arbitrumSepolia,
-            transport: http() 
+          chain: arbitrumSepolia,
+          transport: http()
         });
 
         await publicClient.waitForTransactionReceipt({ hash });
-        
+
         setX402Message((prev) => prev + `\nTransaction confirmed! Verifying with server...`);
 
         // Step 3: Verify Payment
         setX402Status('verifying');
-        
+
         const verifyResponse = await fetch('http://localhost:8000/x402/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ txHash: hash })
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ txHash: hash })
         });
 
         const verifyData = await verifyResponse.json();
 
         if (verifyResponse.ok) {
-            setX402Status('success');
-            setProtectedData(verifyData);
-            setX402Message((prev) => prev + `\n\nAccess Granted!`);
+          setX402Status('success');
+          setProtectedData(verifyData);
+          setX402Message((prev) => prev + `\n\nAccess Granted!`);
         } else {
-             throw new Error(verifyData.error || "Verification failed");
+          throw new Error(verifyData.error || "Verification failed");
         }
 
       } else if (response.ok) {
@@ -250,6 +254,19 @@ export function MainApp() {
     }
   }, [authenticated]);
 
+  // Log registration status for debugging
+  useEffect(() => {
+    if (isRegistering) {
+      console.log('[MainApp] Registering creator...');
+    }
+    if (isRegistered && creatorId) {
+      console.log('[MainApp] Creator registered with ID:', creatorId);
+    }
+    if (registrationError) {
+      console.error('[MainApp] Registration error:', registrationError);
+    }
+  }, [isRegistering, isRegistered, creatorId, registrationError]);
+
   return (
     <div className="min-h-screen bg-[#F3F4F6] text-gray-900">
       <TopBar embeddedWalletAddress={embeddedWallet?.address} />
@@ -316,14 +333,17 @@ export function MainApp() {
                   variants={pageVariants}
                   transition={pageTransition}
                 >
-                  {/* If user is logged in, show Create Asset directly */}
-                  {storage.getCreatorId() ? (
+                  {/* Show loading while auto-registration is in progress */}
+                  {isRegistering ? (
+                    <div className="flex flex-col items-center justify-center py-20">
+                      <div className="w-12 h-12 border-4 border-[#12AAFF]/30 border-t-[#12AAFF] rounded-full animate-spin mb-4"></div>
+                      <p className="text-gray-500">Setting up your creator profile...</p>
+                    </div>
+                  ) : (
                     <AssetSubmission
                       onSuccess={() => setActivePage('my-assets')}
                       onRedirectToRegister={() => setActivePage('register')}
                     />
-                  ) : (
-                    <CreatorRegistration onSuccess={() => setActivePage('register')} />
                   )}
                 </motion.div>
               )}
