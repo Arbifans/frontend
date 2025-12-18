@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, MessageCircle, Settings, User, Wallet, X, Check, LogOut } from 'lucide-react';
+import { Search, MessageCircle, Settings, User, Wallet, X, Check } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { WalletInfo } from './WalletInfo';
 import { Link } from 'react-router-dom';
@@ -7,7 +7,7 @@ import { storage } from '../services/storage';
 import { api, CreatorProfile } from '../services/api';
 import { arbitrumSepolia } from 'viem/chains'
 import { type WalletClient, type Hex, createWalletClient, custom, encodeFunctionData } from 'viem';
-import { useSendTransaction, usePrivy, useWallets, getEmbeddedConnectedWallet } from '@privy-io/react-auth'
+import { useSendTransaction, useWallets, getEmbeddedConnectedWallet } from '@privy-io/react-auth'
 
 
 interface TopBarProps {
@@ -106,13 +106,7 @@ export function TopBar({ embeddedWalletAddress }: TopBarProps) {
     }
   };
 
-  const handleLogout = () => {
-    storage.clearCreatorId();
-    setProfile(null);
-    setShowSettings(false);
-    window.location.reload();
-    // logout();
-  };
+
 
   const isLoggedIn = !!storage.getCreatorId(); // Or if embeddedWalletAddress exists in a sophisticated app?
   // Ideally, if we have embedded wallet, we might consider them 'logged in' or at least 'connected'.
@@ -151,18 +145,18 @@ export function TopBar({ embeddedWalletAddress }: TopBarProps) {
       await sendTransaction({
         to: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a',
         data: data,
-        chainId: 421614, 
+        chainId: 421614,
       },
-    {
-      sponsor: true,
-    }); 
-      
+        {
+          sponsor: true,
+        });
+
     } catch (e) {
       console.error(e);
       setIsClaiming(false);
     }
   }
-  
+
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between sticky top-0 z-50">
       <div className="flex items-center gap-8">
@@ -333,14 +327,12 @@ export function TopBar({ embeddedWalletAddress }: TopBarProps) {
                     </div>
                   </div>
 
-                  {/* Logout Button */}
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-red-600 hover:bg-red-50 rounded-lg transition font-medium"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign Out
-                  </button>
+                  {/* Disconnect Note */}
+                  <div className="pt-2 border-t border-gray-100">
+                    <p className="text-xs text-gray-400 text-center">
+                      To sign out, disconnect your wallet using the wallet button above
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <div className="p-6 text-center">
