@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Wallet, LogOut, ChevronDown, Copy, ExternalLink, RefreshCw } from 'lucide-react';
 import { createWalletClient, createPublicClient, http, custom, formatEther, formatUnits, erc20Abi, parseUnits } from 'viem'
 import { useReadContract, useWaitForTransactionReceipt } from 'wagmi'
+import { storage } from '@/services/storage';
 
 interface WalletInfoProps {
   lastTransactionHash?: string | null;
@@ -74,6 +75,7 @@ export function WalletInfo({ lastTransactionHash }: WalletInfoProps) {
   const handleLogout = async () => {
       await logout();
       window.location.reload(); // Force reload to clear state effectively
+      storage.clearCreatorId();
   };
 
   if (!authenticated || !address) {
