@@ -14,7 +14,7 @@ export function CreatorRegistration({ onSuccess }: CreatorRegistrationProps) {
     const walletAddress = embeddedWallet?.address || '';
 
     // Toggle between 'signup' and 'signin' modes
-    const [mode, setMode] = useState<'signup' | 'signin'>('signup');
+    const [mode, setMode] = useState<'signin' | 'signup'>('signin');
 
     // Sign Up form state
     const [name, setName] = useState('');
@@ -99,23 +99,9 @@ export function CreatorRegistration({ onSuccess }: CreatorRegistrationProps) {
                         className="absolute bottom-0 h-0.5 bg-[#12AAFF] transition-all duration-300 ease-out"
                         style={{
                             width: '50%',
-                            left: mode === 'signup' ? '0%' : '50%'
+                            left: mode === 'signin' ? '0%' : '50%'
                         }}
                     />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setMode('signup');
-                            setError(null);
-                        }}
-                        className={`flex-1 py-4 px-6 font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${mode === 'signup'
-                            ? 'text-[#12AAFF]'
-                            : 'text-gray-400 hover:text-gray-600'
-                            }`}
-                    >
-                        <User className={`w-4 h-4 transition-transform duration-300 ${mode === 'signup' ? 'scale-110' : 'scale-100'}`} />
-                        Sign Up
-                    </button>
                     <button
                         type="button"
                         onClick={() => {
@@ -129,6 +115,20 @@ export function CreatorRegistration({ onSuccess }: CreatorRegistrationProps) {
                     >
                         <LogIn className={`w-4 h-4 transition-transform duration-300 ${mode === 'signin' ? 'scale-110' : 'scale-100'}`} />
                         Sign In
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setMode('signup');
+                            setError(null);
+                        }}
+                        className={`flex-1 py-4 px-6 font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${mode === 'signup'
+                            ? 'text-[#12AAFF]'
+                            : 'text-gray-400 hover:text-gray-600'
+                            }`}
+                    >
+                        <User className={`w-4 h-4 transition-transform duration-300 ${mode === 'signup' ? 'scale-110' : 'scale-100'}`} />
+                        Sign Up
                     </button>
                 </div>
 
