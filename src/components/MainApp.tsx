@@ -5,6 +5,7 @@ import { Feed } from './Feed';
 import { SuggestionsPanel } from './SuggestionsPanel';
 import { Discover } from './Discover';
 import { Chat } from './Chat';
+import { CreatorChat } from './CreatorChat';
 import { Bookmarks } from './Bookmarks';
 import { CreatorRegistration } from './CreatorRegistration';
 import { AssetSubmission } from './AssetSubmission';
@@ -124,11 +125,11 @@ export function MainApp() {
       if (response.status === 402) {
         const errorData = await response.json();
         setX402Message(`Resource protected. Payment Required.\nDetails: ${JSON.stringify(errorData.paymentDetails, null, 2)}`);
-        
+
         const { receiver, amount, tokenAddress, decimals } = errorData.paymentDetails;
-        
+
         if (!receiver || !amount || !tokenAddress) {
-           throw new Error("Invalid payment details received.");
+          throw new Error("Invalid payment details received.");
         }
 
         // Step 2: Send Payment
@@ -136,43 +137,43 @@ export function MainApp() {
         setX402Message((prev) => prev + `\n\nInitiating payment of ${amount} mUSDT to ${receiver}...`);
 
         const hash = await walletClient.writeContract({
-            account: embeddedWallet.address as Hex,
-            address: tokenAddress as `0x${string}`,
-            abi: erc20Abi,
-            functionName: 'transfer',
-            args: [receiver as `0x${string}`, parseUnits(amount, decimals)],
-            chain: arbitrumSepolia 
+          account: embeddedWallet.address as Hex,
+          address: tokenAddress as `0x${string}`,
+          abi: erc20Abi,
+          functionName: 'transfer',
+          args: [receiver as `0x${string}`, parseUnits(amount, decimals)],
+          chain: arbitrumSepolia
         });
 
         setX402Message((prev) => prev + `\nTransaction sent! Hash: ${hash}\nWaiting for confirmation...`);
 
         // Wait for confirmation
         const publicClient = createPublicClient({
-            chain: arbitrumSepolia,
-            transport: http() 
+          chain: arbitrumSepolia,
+          transport: http()
         });
 
         await publicClient.waitForTransactionReceipt({ hash });
-        
+
         setX402Message((prev) => prev + `\nTransaction confirmed! Verifying with server...`);
 
         // Step 3: Verify Payment
         setX402Status('verifying');
-        
+
         const verifyResponse = await fetch('http://localhost:8000/x402/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ txHash: hash })
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ txHash: hash })
         });
 
         const verifyData = await verifyResponse.json();
 
         if (verifyResponse.ok) {
-            setX402Status('success');
-            setProtectedData(verifyData);
-            setX402Message((prev) => prev + `\n\nAccess Granted!`);
+          setX402Status('success');
+          setProtectedData(verifyData);
+          setX402Message((prev) => prev + `\n\nAccess Granted!`);
         } else {
-             throw new Error(verifyData.error || "Verification failed");
+          throw new Error(verifyData.error || "Verification failed");
         }
 
       } else if (response.ok) {
@@ -256,7 +257,7 @@ export function MainApp() {
       <div className="flex">
         <Sidebar activePage={activePage} setActivePage={setActivePage} />
         <main className="flex-1 flex">
-          <div className="flex-1 max-w-3xl mx-auto overflow-hidden">
+          <div className="flex-1 max-w-3xl mx-auto">
             <AnimatePresence mode="wait">
               {activePage === 'home' && (
                 <motion.div
@@ -292,7 +293,7 @@ export function MainApp() {
                   variants={pageVariants}
                   transition={pageTransition}
                 >
-                  <Chat />
+                  {storage.getCreatorId() ? <CreatorChat /> : <Chat />}
                 </motion.div>
               )}
               {activePage === 'bookmarks' && (
