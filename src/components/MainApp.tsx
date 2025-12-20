@@ -32,6 +32,14 @@ export function MainApp() {
   const { login, logout, authenticated } = usePrivy()
   const { sendTransaction } = useSendTransaction()
 
+  // Track creatorId in state so React can react to changes
+  const [creatorId, setCreatorId] = useState<string | null>(storage.getCreatorId());
+
+  // Function to refresh the creatorId state from localStorage
+  const refreshCreatorId = () => {
+    setCreatorId(storage.getCreatorId());
+  };
+
   const [lastTxHash, setLastTxHash] = useState<string | null>(null)
   const [lastContractHash, setLastContractHash] = useState<string | null>(null)
   const [isSendingTx, setIsSendingTx] = useState(false)
@@ -293,7 +301,7 @@ export function MainApp() {
                   variants={pageVariants}
                   transition={pageTransition}
                 >
-                  {storage.getCreatorId() ? <CreatorChat /> : <Chat />}
+                  {creatorId ? <CreatorChat /> : <Chat />}
                 </motion.div>
               )}
               {activePage === 'bookmarks' && (
@@ -318,13 +326,13 @@ export function MainApp() {
                   transition={pageTransition}
                 >
                   {/* If user is logged in, show Create Asset directly */}
-                  {storage.getCreatorId() ? (
+                  {creatorId ? (
                     <AssetSubmission
                       onSuccess={() => setActivePage('my-assets')}
                       onRedirectToRegister={() => setActivePage('register')}
                     />
                   ) : (
-                    <CreatorRegistration onSuccess={() => setActivePage('register')} />
+                    <CreatorRegistration onSuccess={refreshCreatorId} />
                   )}
                 </motion.div>
               )}
@@ -368,7 +376,7 @@ export function MainApp() {
                   transition={pageTransition}
                 >
                   <AssetList
-                    creatorId={Number(storage.getCreatorId()) || 0}
+                    creatorId={Number(creatorId) || 0}
                     onAssetClick={(id) => {
                       window.dispatchEvent(new CustomEvent('route-asset-detail', { detail: id }));
                       setActivePage('asset-detail');
