@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { storage } from '../services/storage';
 import { pinata } from '../services/pinata';
-import { Upload, X, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, AlertCircle, Lock, Unlock } from 'lucide-react';
 import { useWallets, getEmbeddedConnectedWallet, useSendTransaction } from '@privy-io/react-auth';
 import { parseUnits, erc20Abi, encodeFunctionData } from 'viem';
 
@@ -19,6 +19,7 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
         price: '',
         description: ''
     });
+    const [isSpecialContent, setIsSpecialContent] = useState(false);
     const [file, setFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [directUrl, setDirectUrl] = useState('');
@@ -26,6 +27,7 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
     const [urlWarning, setUrlWarning] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [validationError, setValidationError] = useState<string | null>(null);
     const [uploadStatus, setUploadStatus] = useState<string>('');
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -95,11 +97,21 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
         }
     });
 
+    const isPriceInvalid = isSpecialContent && (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) <= 0);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setValidationError(null);
         setUploadStatus('');
+
+        // Validation for Paid Content
+        if (isPriceInvalid) {
+            setValidationError('Price must be greater than 0 for special content.');
+            setLoading(false);
+            return;
+        }
 
         const creatorId = storage.getCreatorId();
         if (!creatorId) {
@@ -107,35 +119,39 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
             return;
         }
 
+        const finalPrice = isSpecialContent ? Number(formData.price) : 0;
+        const isUnlockable = !isSpecialContent; // Free = unlocked (true), Special/Paid = locked (false)
+
         let finalUrl = '';
 
         // Helper to process fee
         const processFee = async () => {
-             setUploadStatus('Processing protocol fee...');
-             const price = Number(formData.price);
-             const fee = price * 0.01;
-             
-             if (fee > 0) {
-                 if (!embeddedWallet) {
-                     throw new Error('Wallet not connected');
-                 }
-                 
-                 const data = encodeFunctionData({
-                     abi: erc20Abi,
-                     functionName: 'transfer',
-                     args: ['0x3141011f001FB5f1CdE0183ACDdD9434Fa473F70', parseUnits(fee.toFixed(6), 6)]
-                 });
+            if (finalPrice <= 0) return; // No fee for free content
 
-                 const receipt = await sendTransaction({
-                     to: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a', // mUSDT
-                     data: data,
-                     chainId: 421614
-                 },
-                {
-                    sponsor: true
+            setUploadStatus('Processing protocol fee...');
+            const fee = finalPrice * 0.01;
+
+            if (fee > 0) {
+                if (!embeddedWallet) {
+                    throw new Error('Wallet not connected');
+                }
+
+                const data = encodeFunctionData({
+                    abi: erc20Abi,
+                    functionName: 'transfer',
+                    args: ['0x3141011f001FB5f1CdE0183ACDdD9434Fa473F70', parseUnits(fee.toFixed(6), 6)]
                 });
-                 console.log('Fee paid:', receipt.hash);
-             }
+
+                const receipt = await sendTransaction({
+                    to: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a', // mUSDT
+                    data: data,
+                    chainId: 421614
+                },
+                    {
+                        sponsor: true
+                    });
+                console.log('Fee paid:', receipt.hash);
+            }
         };
 
         if (uploadMode === 'file') {
@@ -165,9 +181,9 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
                 setLoading(false);
                 return;
             }
-            
+
             // Handle Payment for URL mode too
-             try {
+            try {
                 await processFee();
             } catch (err: any) {
                 console.error(err);
@@ -182,12 +198,17 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
         try {
             // 3. Submit Asset to DB
             setUploadStatus('Creating asset...');
+            console.log('finalUrl', finalUrl);
+            console.log('finalPrice', finalPrice);
+            console.log('isUnlockable', isUnlockable);
+            console.log('creatorId', creatorId);
+            console.log('description', formData.description);
             await api.submitAsset({
                 creatorId: Number(creatorId),
                 url: finalUrl,
-                price: Number(formData.price),
+                price: finalPrice,
                 description: formData.description,
-                unlockableContent: false // New assets are locked by default
+                unlockableContent: isUnlockable
             });
 
             onSuccess();
@@ -329,33 +350,76 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
                     )}
                 </div>
 
+                {/* Content Access Toggle */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Price (mUSDT)
-                    </label>
-                    <input
-                        type="number"
-                        step="0.001"
-                        required
-                        value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 transition-all"
-                        placeholder="1.0"
-                    />
-                    {formData.price && !isNaN(Number(formData.price)) && (
-                        <div className="mt-2 flex items-start gap-2 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                            <AlertCircle className="w-4 h-4 text-[#12AAFF] flex-shrink-0 mt-0.5" />
+                    <label className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-full ${isSpecialContent ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>
+                                {isSpecialContent ? <Lock size={20} /> : <Unlock size={20} />}
+                            </div>
                             <div>
-                                <p className="font-medium text-[#12AAFF]">Protocol Fee Required</p>
-                                <p>
-                                    To create this asset, a 1% protocol fee of 
-                                    <strong className="mx-1 text-gray-900">{(Number(formData.price) * 0.01)} mUSDT</strong>
-                                    will be deducted from your wallet.
-                                </p>
+                                <span className="block font-medium text-gray-900">
+                                    {isSpecialContent ? 'Special Content' : 'Free Content'}
+                                </span>
+                                <span className="block text-xs text-gray-500">
+                                    {isSpecialContent ? 'Paid access only' : 'Visible to everyone'}
+                                </span>
                             </div>
                         </div>
-                    )}
+                        <div className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={isSpecialContent}
+                                onChange={(e) => setIsSpecialContent(e.target.checked)}
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#12AAFF]"></div>
+                        </div>
+                    </label>
                 </div>
+
+                {/* Price Input (Conditional) */}
+                {isSpecialContent && (
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Price (mUSDT) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="number"
+                            step="0.001"
+                            required
+                            min="0.000001"
+                            value={formData.price}
+                            onChange={(e) => {
+                                setFormData({ ...formData, price: e.target.value });
+                                setValidationError(null);
+                            }}
+                            className={`w-full bg-gray-50 border rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:bg-white transition-all ${validationError ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
+                                }`}
+                            placeholder="1.0"
+                        />
+
+                        {validationError && (
+                            <p className="mt-1 text-sm text-red-500 animate-pulse">
+                                {validationError}
+                            </p>
+                        )}
+
+                        {formData.price && !isNaN(Number(formData.price)) && Number(formData.price) > 0 && (
+                            <div className="mt-2 flex items-start gap-2 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                <AlertCircle className="w-4 h-4 text-[#12AAFF] flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-medium text-[#12AAFF]">Protocol Fee Required</p>
+                                    <p>
+                                        To create this asset, a 1% protocol fee of
+                                        <strong className="mx-1 text-gray-900">{(Number(formData.price) * 0.01).toFixed(4)} mUSDT</strong>
+                                        will be deducted from your wallet.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -372,8 +436,8 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
 
                 <button
                     type="submit"
-                    disabled={loading}
-                    className="w-full bg-[#12AAFF] text-white font-bold py-3 rounded-lg hover:bg-blue-600 disabled:opacity-70 transition shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                    disabled={loading || (isSpecialContent && (!formData.price || Number(formData.price) <= 0))}
+                    className="w-full bg-[#12AAFF] text-white font-bold py-3 rounded-lg hover:bg-blue-600 disabled:opacity-70 disabled:cursor-not-allowed transition shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                 >
                     {loading ? (
                         <>
