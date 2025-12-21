@@ -12,9 +12,10 @@ import { useSendTransaction, usePrivy, useWallets, getEmbeddedConnectedWallet } 
 
 interface TopBarProps {
   embeddedWalletAddress?: string;
+  onLogout?: () => void;
 }
 
-export function TopBar({ embeddedWalletAddress }: TopBarProps) {
+export function TopBar({ embeddedWalletAddress, onLogout }: TopBarProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [profile, setProfile] = useState<CreatorProfile | null>(null);
   const [editingName, setEditingName] = useState(false);
@@ -110,8 +111,10 @@ export function TopBar({ embeddedWalletAddress }: TopBarProps) {
     storage.clearCreatorId();
     setProfile(null);
     setShowSettings(false);
-    window.location.reload();
-    // logout();
+    // Call the onLogout callback to trigger state refresh in MainApp
+    if (onLogout) {
+      onLogout();
+    }
   };
 
   const isLoggedIn = !!storage.getCreatorId(); // Or if embeddedWalletAddress exists in a sophisticated app?
@@ -151,18 +154,18 @@ export function TopBar({ embeddedWalletAddress }: TopBarProps) {
       await sendTransaction({
         to: '0x83BDe9dF64af5e475DB44ba21C1dF25e19A0cf9a',
         data: data,
-        chainId: 421614, 
+        chainId: 421614,
       },
-    {
-      sponsor: true,
-    }); 
-      
+        {
+          sponsor: true,
+        });
+
     } catch (e) {
       console.error(e);
       setIsClaiming(false);
     }
   }
-  
+
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between sticky top-0 z-50">
       <div className="flex items-center gap-8">

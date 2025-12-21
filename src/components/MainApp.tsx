@@ -29,7 +29,7 @@ export function MainApp() {
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
   const { wallets } = useWallets();
   const embeddedWallet = getEmbeddedConnectedWallet(wallets)
-  const { login, logout, authenticated } = usePrivy()
+  const { login, logout, authenticated, ready } = usePrivy()
   const { sendTransaction } = useSendTransaction()
 
   // Track creatorId in state so React can react to changes
@@ -254,14 +254,16 @@ export function MainApp() {
   };
 
   useEffect(() => {
-    if (!authenticated) {
+    // Only redirect after Privy has finished loading
+    // This prevents premature redirect when reloading the page
+    if (ready && !authenticated) {
       navigate('/');
     }
-  }, [authenticated]);
+  }, [authenticated, ready, navigate]);
 
   return (
     <div className="min-h-screen bg-[#F3F4F6] text-gray-900">
-      <TopBar embeddedWalletAddress={embeddedWallet?.address} />
+      <TopBar embeddedWalletAddress={embeddedWallet?.address} onLogout={refreshCreatorId} />
       <div className="flex">
         <Sidebar activePage={activePage} setActivePage={setActivePage} />
         <main className="flex-1 flex">
