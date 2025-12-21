@@ -265,7 +265,7 @@ export function MainApp() {
       <div className="flex">
         <Sidebar activePage={activePage} setActivePage={setActivePage} />
         <main className="flex-1 flex">
-          <div className="flex-1 max-w-3xl mx-auto">
+          <div className={`flex-1 ${activePage === 'messages' ? '' : 'max-w-3xl mx-auto'}`}>
             <AnimatePresence mode="wait">
               {activePage === 'home' && (
                 <motion.div

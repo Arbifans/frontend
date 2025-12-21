@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MoreVertical, Phone, Video, Send, Image, Smile, DollarSign } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Conversation } from './Chat';
+import { ethers } from 'ethers';
 
 interface Message {
   id: number;
@@ -18,6 +19,32 @@ interface MessageThreadProps {
 
 export function MessageThread({ conversation }: MessageThreadProps) {
   const [messageText, setMessageText] = useState('');
+  const [walletAddress, setWalletAddress] = useState('');
+  const [isAddressValid, setIsAddressValid] = useState(true);
+  const [selectedTip, setSelectedTip] = useState<string>(''); // State for selected tip
+
+  // Load wallet address from local storage on mount
+  useEffect(() => {
+    const savedAddress = localStorage.getItem('creatorWalletAddress');
+    if (savedAddress) {
+      setWalletAddress(savedAddress);
+    }
+  }, []);
+
+  // Validate address when it changes
+  useEffect(() => {
+    if (!walletAddress) {
+      setIsAddressValid(true);
+      return;
+    }
+
+    const isValid = ethers.isAddress(walletAddress);
+    setIsAddressValid(isValid);
+
+    if (isValid) {
+      localStorage.setItem('creatorWalletAddress', walletAddress);
+    }
+  }, [walletAddress]);
 
   const messages: Message[] = [
     {
@@ -69,6 +96,7 @@ export function MessageThread({ conversation }: MessageThreadProps) {
     if (messageText.trim()) {
       // Handle send message
       setMessageText('');
+      setSelectedTip(''); // Reset tip after sending
     }
   };
 
@@ -92,7 +120,7 @@ export function MessageThread({ conversation }: MessageThreadProps) {
               <span className="font-semibold text-gray-900">{conversation.name}</span>
               {conversation.isVerified && (
                 <svg className="w-4 h-4 text-[#12AAFF]" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+                  <path d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
                 </svg>
               )}
             </div>
@@ -124,11 +152,10 @@ export function MessageThread({ conversation }: MessageThreadProps) {
             <div className={`max-w-xs ${message.sender === 'me' ? 'order-2' : 'order-1'}`}>
               {message.type === 'text' && (
                 <div
-                  className={`px-4 py-2 rounded-2xl shadow-sm ${
-                    message.sender === 'me'
-                      ? 'bg-[#12AAFF] text-white'
-                      : 'bg-gray-100 text-gray-900'
-                  }`}
+                  className={`px-4 py-2 rounded-2xl shadow-sm ${message.sender === 'me'
+                    ? 'bg-[#12AAFF] text-white'
+                    : 'bg-gray-100 text-gray-900'
+                    }`}
                 >
                   <p>{message.content}</p>
                 </div>
@@ -156,20 +183,44 @@ export function MessageThread({ conversation }: MessageThreadProps) {
             <span className="text-sm text-orange-700 font-medium">Unlock messaging with a tip</span>
           </div>
           <p className="text-xs text-gray-500 mb-3">Send a tip to start the conversation</p>
-          <div className="flex gap-2">
-            <button className="flex-1 py-2 bg-white border border-orange-200 text-orange-600 rounded-lg hover:bg-orange-50 transition text-sm font-medium">
-              $5
-            </button>
-            <button className="flex-1 py-2 bg-white border border-orange-200 text-orange-600 rounded-lg hover:bg-orange-50 transition text-sm font-medium">
-              $10
-            </button>
-            <button className="flex-1 py-2 bg-white border border-orange-200 text-orange-600 rounded-lg hover:bg-orange-50 transition text-sm font-medium">
-              $20
-            </button>
-            <button className="flex-1 py-2 bg-white border border-orange-200 text-orange-600 rounded-lg hover:bg-orange-50 transition text-sm font-medium">
-              Custom
-            </button>
+          <div className="flex gap-2 mb-3">
+            {['5', '10', '20', 'Custom'].map((amount) => (
+              <button
+                key={amount}
+                onClick={() => setSelectedTip(amount)}
+                className={`flex-1 py-2 border rounded-lg transition text-sm font-medium ${selectedTip === amount
+                  ? 'bg-orange-500 text-white border-orange-600 shadow-sm'
+                  : 'bg-white border-orange-200 text-orange-600 hover:bg-orange-50'
+                  }`}
+              >
+                ${amount}
+              </button>
+            ))}
           </div>
+
+          {/* Wallet Address Input */}
+          <div className="space-y-1">
+            <label htmlFor="wallet-address" className="text-xs font-semibold text-orange-700">
+              Creator Wallet Address
+            </label>
+            <input
+              id="wallet-address"
+              type="text"
+              placeholder="0x... (creator wallet address)"
+              value={walletAddress}
+              onChange={(e) => setWalletAddress(e.target.value)}
+              className={`w-full px-3 py-2 border rounded-md text-xs outline-none transition-all ${!isAddressValid && walletAddress
+                ? 'border-red-500 focus:ring-1 focus:ring-red-200'
+                : 'border-orange-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-100'
+                }`}
+            />
+            {!isAddressValid && walletAddress && (
+              <p className="text-[10px] text-red-500 font-medium animate-in slide-in-from-top-1">
+                Please enter a valid Ethereum address.
+              </p>
+            )}
+          </div>
+
         </div>
         <div className="flex items-center gap-2">
           <button className="p-2 hover:bg-gray-100 rounded-full transition text-gray-400 hover:text-gray-600">
@@ -188,7 +239,11 @@ export function MessageThread({ conversation }: MessageThreadProps) {
           />
           <button
             onClick={handleSend}
-            className="px-4 py-2 bg-[#12AAFF] text-white rounded-full hover:bg-blue-600 transition flex items-center gap-2 shadow-md hover:shadow-lg"
+            disabled={!selectedTip || !walletAddress || !isAddressValid || !messageText.trim()}
+            className={`px-4 py-2 text-white rounded-full transition flex items-center gap-2 shadow-md ${!selectedTip || !walletAddress || !isAddressValid || !messageText.trim()
+                ? 'bg-gray-300 cursor-not-allowed hidden'
+                : 'bg-[#12AAFF] hover:bg-blue-600 hover:shadow-lg'
+              }`}
           >
             <DollarSign className="w-4 h-4" />
             <span className="text-sm font-bold">Tip & Send</span>
