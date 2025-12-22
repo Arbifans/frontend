@@ -286,10 +286,13 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
                                     />
                                 </div>
                             ) : (
-                                <div className="relative rounded-xl overflow-hidden border border-gray-200 group">
-                                    <div className="aspect-video bg-gray-100 flex items-center justify-center">
+                                <div className="relative rounded-xl overflow-hidden border border-gray-200 group max-w-[200px] mx-auto">
+                                    <div 
+                                        className="bg-gray-100 flex items-center justify-center"
+                                        style={{ aspectRatio: '4/5' }}
+                                    >
                                         {previewUrl ? (
-                                            <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
+                                            <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                                         ) : (
                                             <ImageIcon className="text-gray-300" size={48} />
                                         )}
@@ -331,12 +334,15 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
 
                             {/* Preview */}
                             {previewUrl && (
-                                <div className="relative rounded-xl overflow-hidden border border-gray-200">
-                                    <div className="aspect-video bg-gray-100 flex items-center justify-center">
+                                <div className="relative rounded-xl overflow-hidden border border-gray-200 max-w-[200px] mx-auto">
+                                    <div 
+                                        className="bg-gray-100 flex items-center justify-center"
+                                        style={{ aspectRatio: '4/5' }}
+                                    >
                                         <img
                                             src={previewUrl}
                                             alt="Preview"
-                                            className="w-full h-full object-contain"
+                                            className="w-full h-full object-cover"
                                             onError={(e) => {
                                                 e.currentTarget.src = '';
                                                 e.currentTarget.alt = 'Failed to load image';
@@ -386,9 +392,9 @@ export function AssetSubmission({ onSuccess, onRedirectToRegister }: AssetSubmis
                         </label>
                         <input
                             type="number"
-                            step="0.001"
+                            step="1"
                             required
-                            min="0.000001"
+                            min="1"
                             value={formData.price}
                             onChange={(e) => {
                                 setFormData({ ...formData, price: e.target.value });

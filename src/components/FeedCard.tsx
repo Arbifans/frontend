@@ -260,9 +260,14 @@ export function FeedCard({ asset, creatorName, isOwner = false, onClick }: FeedC
             {/* Success Modal */}
             <SuccessModal />
             <div
-                className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer flex flex-col"
+                className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer flex flex-col mx-auto"
                 onClick={onClick}
-                style={{ display: 'flex', flexDirection: 'column' }}
+                style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    maxWidth: '470px', /* Limit width to resemble Instagram on web */
+                    width: '100%'
+                }}
             >
                 {/* Header Section */}
                 <div className="flex items-center justify-between p-4 flex-shrink-0">
@@ -302,7 +307,7 @@ export function FeedCard({ asset, creatorName, isOwner = false, onClick }: FeedC
                     <div
                         className="relative w-full bg-gray-100"
                         style={{
-                            paddingBottom: '100%', /* 1:1 Aspect Ratio */
+                            aspectRatio: '4/5', /* 1080x1350 Instagram Portrait Ratio */
                             position: 'relative'
                         }}
                     >
@@ -347,7 +352,7 @@ export function FeedCard({ asset, creatorName, isOwner = false, onClick }: FeedC
                             {/* Locked Overlay - CONTAINED within image wrapper */}
                             {effectiveShouldBlur && (
                                 <div
-                                    className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 backdrop-blur-sm"
+                                    className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md"
                                     style={{
                                         position: 'absolute',
                                         top: 0,
@@ -358,9 +363,9 @@ export function FeedCard({ asset, creatorName, isOwner = false, onClick }: FeedC
                                     }}
                                 >
                                     <Lock className="w-12 h-12 text-white mb-3" />
-                                    <p className="text-white font-semibold mb-2">Exclusive Content</p>
+                                    <p className="text-white font-semibold mb-2">Special Content</p>
                                     <button
-                                        className="bg-[#12AAFF] text-white px-6 py-2 rounded-full hover:bg-blue-600 transition shadow-lg font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="bg-[#12AAFF] text-white px-8 py-2.5 rounded-full hover:bg-blue-600 transition shadow-lg font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95"
                                         onClick={handlePayment}
                                         disabled={isProcessing}
                                     >
