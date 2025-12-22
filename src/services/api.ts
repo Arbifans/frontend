@@ -89,12 +89,12 @@ export const api = {
             method: 'GET',
             headers,
         });
-        
+
         // Handle 402 Payment Required specifically
         if (response.status === 402) {
             return response.json();
         }
-        
+
         return handleResponse<void>(response);
     },
 
@@ -102,7 +102,7 @@ export const api = {
         const response = await fetch(`${API_BASE_URL}/api/creator/assets/${id}/verify`, {
             method: 'POST',
             headers,
-            body: JSON.stringify({REQUIRED_AMOUNT_USDT, RECEIVER_ADDRESS, txHash}),
+            body: JSON.stringify({ REQUIRED_AMOUNT_USDT, RECEIVER_ADDRESS, txHash }),
         });
         return handleResponse<void>(response);
     },

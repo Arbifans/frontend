@@ -378,7 +378,7 @@ export function MainApp() {
                   transition={pageTransition}
                 >
                   <AssetList
-                    creatorId={Number(creatorId) || 0}
+                    creatorId={creatorId ? Number(creatorId) : undefined}
                     onAssetClick={(id) => {
                       window.dispatchEvent(new CustomEvent('route-asset-detail', { detail: id }));
                       setActivePage('asset-detail');
