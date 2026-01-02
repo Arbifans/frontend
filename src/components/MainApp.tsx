@@ -13,6 +13,7 @@ import { AssetSubmission } from './AssetSubmission';
 import { AssetList } from './AssetList';
 import { AssetDetail } from './AssetDetail';
 import { storage } from '../services/storage';
+import { CreatorProfile } from '../services/api';
 import { useEffect, useState } from 'react';
 import { Earnings } from './Earnings';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,6 +28,7 @@ import { useReadContract, useWaitForTransactionReceipt } from 'wagmi'
 export function MainApp() {
   const [activePage, setActivePage] = useState('home');
   const [selectedCreatorId, setSelectedCreatorId] = useState<number | null>(null);
+  const [selectedChatCreator, setSelectedChatCreator] = useState<CreatorProfile | null>(null);
   const navigate = useNavigate();
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
   const { wallets } = useWallets();
@@ -301,6 +303,10 @@ export function MainApp() {
                   <UserFeed
                     creatorId={selectedCreatorId}
                     onBack={() => setActivePage('home')}
+                    onMessageClick={(profile) => {
+                      setSelectedChatCreator(profile);
+                      setActivePage('messages');
+                    }}
                   />
                 </motion.div>
               )}
@@ -325,7 +331,7 @@ export function MainApp() {
                   variants={pageVariants}
                   transition={pageTransition}
                 >
-                  {creatorId ? <CreatorChat /> : <Chat />}
+                  {creatorId ? <CreatorChat /> : <Chat initialCreator={selectedChatCreator} />}
                 </motion.div>
               )}
               {activePage === 'bookmarks' && (

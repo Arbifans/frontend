@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Heart, MessageCircle, Bookmark, MoreHorizontal, Send, Lock, CheckCircle, X, Sparkles } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Asset } from '../services/api';
-import { api } from '../services/api';
+import { Asset, api } from '../services/api';
+import { storage } from '../services/storage';
 import { useWallets, getEmbeddedConnectedWallet, useSendTransaction } from '@privy-io/react-auth';
 import { parseUnits, erc20Abi, encodeFunctionData } from 'viem';
 
@@ -42,7 +42,7 @@ export function FeedCard({ asset, creatorName, isOwner = false, onCreatorClick }
 
     const { wallets } = useWallets();
     const embeddedWallet = getEmbeddedConnectedWallet(wallets);
-    const [localUnlocked, setLocalUnlocked] = useState(isUnlocked);
+    const [localUnlocked, setLocalUnlocked] = useState(isUnlocked || storage.isAssetUnlocked(asset.id));
     const [isProcessing, setIsProcessing] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [purchaseDetails, setPurchaseDetails] = useState({ amount: '', txHash: '' });
@@ -103,6 +103,7 @@ export function FeedCard({ asset, creatorName, isOwner = false, onCreatorClick }
             await api.postVerifyAsset(asset.id, amount.toString(), receiverAddress, receipt.hash);
 
             // 4. Unlock and show success modal
+            storage.saveUnlockedAsset(asset.id);
             setLocalUnlocked(true);
             setPurchaseDetails({ amount: amount.toString(), txHash: receipt.hash });
             setShowSuccessModal(true);

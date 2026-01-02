@@ -234,13 +234,17 @@ export function MessageThread({ conversation }: MessageThreadProps) {
   const embeddedWallet = getEmbeddedConnectedWallet(wallets);
   const { sendTransaction } = useSendTransaction();
 
-  // Load wallet address from local storage on mount
+  // Load wallet address from conversation or local storage
   useEffect(() => {
-    const savedAddress = localStorage.getItem('creatorWalletAddress');
-    if (savedAddress) {
-      setWalletAddress(savedAddress);
+    if (conversation.walletAddress) {
+      setWalletAddress(conversation.walletAddress);
+    } else {
+      const savedAddress = localStorage.getItem('creatorWalletAddress');
+      if (savedAddress) {
+        setWalletAddress(savedAddress);
+      }
     }
-  }, []);
+  }, [conversation]);
 
   // Validate address when it changes
   useEffect(() => {
@@ -339,9 +343,8 @@ export function MessageThread({ conversation }: MessageThreadProps) {
 
       setMessages((prev) => [...prev, ...newMessages]);
 
-      // Show success modal
-      setLastTipDetails({ amount: tipAmount, recipient: walletAddress });
-      setShowSuccessModal(true);
+      // Show success modal - Disabled per user request
+      // setShowSuccessModal(true);
 
       // Reset form
       setMessageText('');
@@ -359,12 +362,13 @@ export function MessageThread({ conversation }: MessageThreadProps) {
   return (
     <div className="flex-1 flex flex-col bg-white">
       {/* Success Modal */}
-      <SuccessModal
+      {/* Success Modal - Hidden */},
+      {/* <SuccessModal
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
         tipAmount={lastTipDetails.amount}
         recipientAddress={lastTipDetails.recipient}
-      />
+      /> */}
 
       {/* Header */}
       <div className="p-4 border-b border-gray-200 flex items-center justify-between">
@@ -485,7 +489,8 @@ export function MessageThread({ conversation }: MessageThreadProps) {
           )}
 
           {/* Wallet Address Input */}
-          <div className="space-y-1">
+          {/* Wallet Address Input - Hidden per user request */}
+          {/* <div className="space-y-1">
             <label htmlFor="wallet-address" className="text-xs font-semibold text-orange-700">
               Creator Wallet Address
             </label>
@@ -506,7 +511,7 @@ export function MessageThread({ conversation }: MessageThreadProps) {
                 Please enter a valid Ethereum address.
               </p>
             )}
-          </div>
+          </div> */}
 
         </div>
         <div className="flex items-center gap-2">

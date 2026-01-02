@@ -10,14 +10,14 @@ import { parseUnits, erc20Abi, encodeFunctionData } from 'viem';
 interface UserFeedProps {
     creatorId: number;
     onBack: () => void;
+    onMessageClick?: (profile: CreatorProfile) => void;
 }
 
 type TabType = 'grid' | 'reels' | 'tagged';
 
-// LocalStorage key for unlocked assets
-const UNLOCKED_ASSETS_KEY = 'arbifans_unlocked_assets';
 
-export function UserFeed({ creatorId, onBack }: UserFeedProps) {
+
+export function UserFeed({ creatorId, onBack, onMessageClick }: UserFeedProps) {
     const [searchParams, setSearchParams] = useSearchParams();
     const [profile, setProfile] = useState<CreatorProfile | null>(null);
     const [assets, setAssets] = useState<Asset[]>([]);
@@ -46,33 +46,16 @@ export function UserFeed({ creatorId, onBack }: UserFeedProps) {
         }
     });
 
-    // Helper functions for localStorage
-    const getUnlockedAssets = (): Set<number> => {
-        try {
-            const stored = localStorage.getItem(UNLOCKED_ASSETS_KEY);
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                return new Set(parsed);
-            }
-        } catch (e) {
-            console.error('Failed to parse unlocked assets from localStorage', e);
-        }
-        return new Set();
-    };
 
-    const saveUnlockedAsset = (assetId: number) => {
-        const unlocked = getUnlockedAssets();
-        unlocked.add(assetId);
-        localStorage.setItem(UNLOCKED_ASSETS_KEY, JSON.stringify([...unlocked]));
-    };
 
     useEffect(() => {
         loadCreatorData();
         const storedId = storage.getCreatorId();
         setCurrentCreatorId(storedId ? Number(storedId) : null);
 
+
         // Load unlocked assets from localStorage
-        const unlockedAssets = getUnlockedAssets();
+        const unlockedAssets = storage.getUnlockedAssets();
         setPurchasedAssets(unlockedAssets);
     }, [creatorId]);
 
@@ -156,8 +139,11 @@ export function UserFeed({ creatorId, onBack }: UserFeedProps) {
     };
 
     const handleMessage = () => {
-        // TODO: Navigate to messages or open chat
-        console.log('Open message with creator:', creatorId);
+        if (profile && onMessageClick) {
+            onMessageClick(profile);
+        } else {
+            console.log('Open message with creator:', creatorId);
+        }
     };
 
     const handlePurchaseComplete = (assetId: number) => {
@@ -232,7 +218,7 @@ export function UserFeed({ creatorId, onBack }: UserFeedProps) {
             handlePurchaseComplete(asset.id);
 
             // 5. Save to localStorage
-            saveUnlockedAsset(asset.id);
+            storage.saveUnlockedAsset(asset.id);
 
             setIsProcessing(false);
 
