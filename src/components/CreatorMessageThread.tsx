@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MoreVertical, Phone, Video, Send, Image, Smile, DollarSign, Gift, Loader2, Heart } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { CreatorConversation } from './CreatorChat';
@@ -35,16 +35,20 @@ export function CreatorMessageThread({ conversation }: CreatorMessageThreadProps
   const embeddedWallet = getEmbeddedConnectedWallet(wallets);
   const { sendTransaction } = useSendTransaction();
 
-  const messages: Message[] = [
-    {
-      id: 1,
-      sender: 'them',
-      content: `Sent a tip of ${conversation.totalTips} mUSDT`,
-      timestamp: conversation.timestamp,
-      type: 'tip',
-      amount: `${conversation.totalTips} mUSDT`,
-    },
-  ];
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  useEffect(() => {
+    setMessages([
+      {
+        id: 1,
+        sender: 'them',
+        content: `Sent a tip of ${conversation.totalTips} mUSDT`,
+        timestamp: conversation.timestamp,
+        type: 'tip',
+        amount: `${conversation.totalTips} mUSDT`,
+      },
+    ]);
+  }, [conversation.id, conversation.totalTips, conversation.timestamp]);
 
   const conversationTotalTips = messages
     .filter((m) => m.type === 'tip' && m.sender === 'them')
@@ -75,7 +79,15 @@ export function CreatorMessageThread({ conversation }: CreatorMessageThreadProps
           sponsor: true
         });
         
-        // Success handling could go here (e.g., refresh list, show toast)
+        // Success: Show the reply message
+        const newMessage: Message = {
+          id: Date.now(),
+          sender: 'me',
+          content: messageText,
+          timestamp: 'Just now',
+          type: 'text'
+        };
+        setMessages(prev => [...prev, newMessage]);
 
       } catch (error) {
         console.error("Error claiming tip:", error);
@@ -85,6 +97,14 @@ export function CreatorMessageThread({ conversation }: CreatorMessageThreadProps
       }
     } else {
       // Just a normal send
+      const newMessage: Message = {
+        id: Date.now(),
+        sender: 'me',
+        content: messageText,
+        timestamp: 'Just now',
+        type: 'text'
+      };
+      setMessages(prev => [...prev, newMessage]);
       setMessageText('');
     }
   };
