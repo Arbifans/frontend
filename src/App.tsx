@@ -1,6 +1,7 @@
 import Providers from './provider';
 import { MainApp } from './components/MainApp';
 import LandingPage from './components/LandingPage';
+import { CreatorPage } from './components/CreatorPage';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 export default function App() {
@@ -10,6 +11,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/mainpage" element={<MainApp />} />
+          <Route path="/creators/:creatorId" element={<CreatorPage />} />
         </Routes>
       </BrowserRouter>
     </Providers>

@@ -2,6 +2,7 @@ import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { StoriesBar } from './StoriesBar';
 import { Feed } from './Feed';
+import { UserFeed } from './UserFeed';
 import { SuggestionsPanel } from './SuggestionsPanel';
 import { Discover } from './Discover';
 import { Chat } from './Chat';
@@ -25,6 +26,7 @@ import { useReadContract, useWaitForTransactionReceipt } from 'wagmi'
 
 export function MainApp() {
   const [activePage, setActivePage] = useState('home');
+  const [selectedCreatorId, setSelectedCreatorId] = useState<number | null>(null);
   const navigate = useNavigate();
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
   const { wallets } = useWallets();
@@ -279,7 +281,27 @@ export function MainApp() {
                   transition={pageTransition}
                 >
                   <StoriesBar />
-                  <Feed />
+                  <Feed
+                    onCreatorClick={(creatorId) => {
+                      setSelectedCreatorId(creatorId);
+                      setActivePage('user-feed');
+                    }}
+                  />
+                </motion.div>
+              )}
+              {activePage === 'user-feed' && selectedCreatorId && (
+                <motion.div
+                  key="user-feed"
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  variants={pageVariants}
+                  transition={pageTransition}
+                >
+                  <UserFeed
+                    creatorId={selectedCreatorId}
+                    onBack={() => setActivePage('home')}
+                  />
                 </motion.div>
               )}
               {activePage === 'discover' && (

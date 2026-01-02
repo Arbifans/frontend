@@ -26,6 +26,7 @@ export interface Asset {
     id: number;
     creatorId: number;
     Url: string;
+    previewUrl?: string; // Optional preview URL for locked content
     price: number;
     description: string;
     unlockableContent?: boolean;

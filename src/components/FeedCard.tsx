@@ -10,10 +10,10 @@ interface FeedCardProps {
     asset: Asset;
     creatorName?: string;
     isOwner?: boolean;
-    onClick?: () => void;
+    onCreatorClick?: () => void;
 }
 
-export function FeedCard({ asset, creatorName, isOwner = false, onClick }: FeedCardProps) {
+export function FeedCard({ asset, creatorName, isOwner = false, onCreatorClick }: FeedCardProps) {
     const [liked, setLiked] = useState(false);
     const [bookmarked, setBookmarked] = useState(false);
     const [likeCount, setLikeCount] = useState(Math.floor(Math.random() * 2000) + 100);
@@ -260,10 +260,9 @@ export function FeedCard({ asset, creatorName, isOwner = false, onClick }: FeedC
             {/* Success Modal */}
             <SuccessModal />
             <div
-                className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer flex flex-col mx-auto"
-                onClick={onClick}
-                style={{ 
-                    display: 'flex', 
+                className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col mx-auto"
+                style={{
+                    display: 'flex',
                     flexDirection: 'column',
                     maxWidth: '470px', /* Limit width to resemble Instagram on web */
                     width: '100%'
@@ -273,12 +272,26 @@ export function FeedCard({ asset, creatorName, isOwner = false, onClick }: FeedC
                 <div className="flex items-center justify-between p-4 flex-shrink-0">
                     <div className="flex items-center gap-3">
                         {/* Avatar */}
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#12AAFF] to-[#0088DD] flex items-center justify-center text-white font-bold text-sm ring-2 ring-gray-100 flex-shrink-0">
+                        <div
+                            className="w-10 h-10 rounded-full bg-gradient-to-br from-[#12AAFF] to-[#0088DD] flex items-center justify-center text-white font-bold text-sm ring-2 ring-gray-100 flex-shrink-0 cursor-pointer hover:ring-[#12AAFF] transition"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onCreatorClick?.();
+                            }}
+                        >
                             {displayName.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
-                                <span className="font-semibold text-gray-900 text-sm truncate">{displayName}</span>
+                                <span
+                                    className="font-semibold text-gray-900 text-sm truncate cursor-pointer hover:text-[#12AAFF] transition"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onCreatorClick?.();
+                                    }}
+                                >
+                                    {displayName}
+                                </span>
                                 {/* Verified badge */}
                                 <svg className="w-4 h-4 text-[#12AAFF] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />

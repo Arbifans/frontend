@@ -354,7 +354,7 @@ export function TopBar({ embeddedWalletAddress, onLogout }: TopBarProps) {
                     Sign in to access your profile settings
                   </p>
                   <Link
-                    to="/"
+                    to="/mainpage"
                     onClick={() => setShowSettings(false)}
                     className="inline-block px-4 py-2 bg-[#12AAFF] text-white rounded-lg font-medium hover:bg-blue-600 transition"
                   >
